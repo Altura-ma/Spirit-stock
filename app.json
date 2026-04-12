@@ -4,37 +4,17 @@
     "slug": "spirit-stock",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.spiritstock.app",
       "buildNumber": "1"
     },
     "android": {
-      "package": "com.spiritstock.app",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#FFFFFF"
-      }
+      "package": "com.spiritstock.app"
     },
     "plugins": [
-      [
-        "expo-notifications",
-        {
-          "color": "#8B4513"
-        }
-      ]
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "VOTRE_EAS_PROJECT_ID"
-      }
-    }
+      "expo-notifications"
+    ]
   }
 }
