@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,10 +22,14 @@ const CATEGORIES: Array<{ value: BottleCategory | 'all'; label: string }> = [
   { value: 'rhum', label: 'Rhum' },
   { value: 'vodka', label: 'Vodka' },
   { value: 'gin', label: 'Gin' },
+  { value: 'cognac', label: 'Cognac' },
+  { value: 'tequila', label: 'Tequila' },
   { value: 'vin_rouge', label: 'Vin Rouge' },
   { value: 'vin_blanc', label: 'Vin Blanc' },
+  { value: 'vin_rose', label: 'Rosé' },
   { value: 'champagne', label: 'Champagne' },
   { value: 'biere', label: 'Bière' },
+  { value: 'liqueur', label: 'Liqueur' },
   { value: 'autre', label: 'Autre' },
 ];
 
@@ -38,38 +42,90 @@ function SellModal({
   bottle: Bottle | null;
   visible: boolean;
   onClose: () => void;
-  onSell: (qty: number) => void;
+  onSell: (qty: number) => Promise<void>;
 }) {
   const [qty, setQty] = useState('1');
+  const [loading, setLoading] = useState(false);
+
+  // Réinitialise la quantité à chaque nouvelle bouteille
+  useEffect(() => {
+    if (bottle) setQty('1');
+  }, [bottle?.id]);
+
   if (!bottle) return null;
+
+  const parsed = parseInt(qty, 10);
+  const isValid = !isNaN(parsed) && parsed > 0 && parsed <= bottle.quantity;
+
+  const handleConfirm = async () => {
+    if (!isValid) {
+      Alert.alert(
+        'Quantité invalide',
+        `Entrez une quantité entre 1 et ${bottle.quantity}.`
+      );
+      return;
+    }
+    setLoading(true);
+    try {
+      await onSell(parsed);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const adjust = (delta: number) => {
+    const current = parseInt(qty, 10) || 0;
+    const next = Math.max(1, Math.min(bottle.quantity, current + delta));
+    setQty(String(next));
+  };
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={modalStyles.overlay}>
         <View style={modalStyles.card}>
-          <Text style={modalStyles.title}>Vente</Text>
+          <Text style={modalStyles.title}>Enregistrer une vente</Text>
           <Text style={modalStyles.name}>{bottle.name}</Text>
-          <Text style={modalStyles.stock}>Stock actuel : {bottle.quantity}</Text>
+          <Text style={modalStyles.stock}>
+            Stock disponible : <Text style={{ color: COLORS.primary }}>{bottle.quantity}</Text>
+          </Text>
+
           <Text style={modalStyles.label}>Quantité vendue</Text>
-          <TextInput
-            style={modalStyles.input}
-            value={qty}
-            onChangeText={setQty}
-            keyboardType="number-pad"
-            selectTextOnFocus
-          />
+          <View style={modalStyles.qtyRow}>
+            <TouchableOpacity
+              style={modalStyles.qtyBtn}
+              onPress={() => adjust(-1)}
+            >
+              <Ionicons name="remove" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TextInput
+              style={modalStyles.input}
+              value={qty}
+              onChangeText={setQty}
+              keyboardType="number-pad"
+              selectTextOnFocus
+            />
+            <TouchableOpacity
+              style={modalStyles.qtyBtn}
+              onPress={() => adjust(1)}
+            >
+              <Ionicons name="add" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
+
           <View style={modalStyles.buttons}>
-            <TouchableOpacity style={modalStyles.cancelBtn} onPress={onClose}>
+            <TouchableOpacity style={modalStyles.cancelBtn} onPress={onClose} disabled={loading}>
               <Text style={modalStyles.cancelText}>Annuler</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={modalStyles.confirmBtn}
-              onPress={() => {
-                const n = parseInt(qty, 10);
-                if (!n || n <= 0) return;
-                onSell(n);
-              }}
+              style={[modalStyles.confirmBtn, !isValid && modalStyles.confirmBtnDisabled]}
+              onPress={handleConfirm}
+              disabled={loading || !isValid}
             >
-              <Text style={modalStyles.confirmText}>Valider</Text>
+              {loading ? (
+                <ActivityIndicator color={COLORS.white} size="small" />
+              ) : (
+                <Text style={modalStyles.confirmText}>Valider</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -80,16 +136,19 @@ function SellModal({
 
 const modalStyles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  card: { backgroundColor: COLORS.white, borderRadius: 16, padding: 24, width: '80%' },
+  card: { backgroundColor: COLORS.white, borderRadius: 16, padding: 24, width: '85%' },
   title: { fontSize: 18, ...FONTS.bold, color: COLORS.text, marginBottom: 4 },
-  name: { fontSize: 15, color: COLORS.textSecondary, marginBottom: 8 },
-  stock: { fontSize: 13, color: COLORS.primary, ...FONTS.medium, marginBottom: 16 },
-  label: { fontSize: 13, ...FONTS.semibold, color: COLORS.text, marginBottom: 8 },
-  input: { backgroundColor: COLORS.inputBg, borderRadius: 10, padding: 12, fontSize: 18, color: COLORS.text, textAlign: 'center', borderWidth: 1, borderColor: COLORS.border, marginBottom: 20 },
+  name: { fontSize: 15, color: COLORS.textSecondary, marginBottom: 4 },
+  stock: { fontSize: 13, ...FONTS.medium, color: COLORS.text, marginBottom: 20 },
+  label: { fontSize: 13, ...FONTS.semibold, color: COLORS.text, marginBottom: 10 },
+  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 24 },
+  qtyBtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.inputBg },
+  input: { flex: 1, backgroundColor: COLORS.inputBg, borderRadius: 10, padding: 12, fontSize: 22, color: COLORS.text, textAlign: 'center', borderWidth: 1, borderColor: COLORS.border, ...FONTS.bold },
   buttons: { flexDirection: 'row', gap: 10 },
   cancelBtn: { flex: 1, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center' },
   cancelText: { color: COLORS.textSecondary, ...FONTS.medium },
   confirmBtn: { flex: 1, padding: 12, borderRadius: 10, backgroundColor: COLORS.primary, alignItems: 'center' },
+  confirmBtnDisabled: { backgroundColor: COLORS.border },
   confirmText: { color: COLORS.white, ...FONTS.bold },
 });
 
@@ -111,7 +170,7 @@ function BottleItem({
     <View style={[itemStyles.card, isEmpty && itemStyles.cardEmpty, isLow && !isEmpty && itemStyles.cardLow]}>
       <View style={itemStyles.top}>
         <View style={itemStyles.titleRow}>
-          <Text style={itemStyles.name}>{bottle.name}</Text>
+          <Text style={itemStyles.name} numberOfLines={1}>{bottle.name}</Text>
           {isEmpty && (
             <View style={itemStyles.badge}>
               <Text style={itemStyles.badgeText}>ÉPUISÉ</Text>
@@ -128,18 +187,26 @@ function BottleItem({
 
       <View style={itemStyles.bottom}>
         <View style={itemStyles.info}>
-          <Text style={itemStyles.qty}>{bottle.quantity}</Text>
+          <Text style={[itemStyles.qty, isEmpty && { color: COLORS.danger }]}>
+            {bottle.quantity}
+          </Text>
           <Text style={itemStyles.qtyLabel}>unités</Text>
-          <Text style={itemStyles.minLabel}>seuil: {bottle.minThreshold}</Text>
+          <Text style={itemStyles.minLabel}>seuil : {bottle.minThreshold}</Text>
         </View>
         <View style={itemStyles.info}>
           <Text style={itemStyles.price}>{bottle.price.toFixed(2)} €</Text>
           <Text style={itemStyles.priceLabel}>/ unité</Text>
-          <Text style={itemStyles.valueLabel}>val. {(bottle.quantity * bottle.price).toFixed(0)} €</Text>
+          <Text style={itemStyles.valueLabel}>
+            val. {(bottle.quantity * bottle.price).toFixed(0)} €
+          </Text>
         </View>
         <View style={itemStyles.actions}>
-          <TouchableOpacity style={itemStyles.sellBtn} onPress={onSell}>
-            <Ionicons name="remove-circle-outline" size={20} color={COLORS.white} />
+          <TouchableOpacity
+            style={[itemStyles.sellBtn, isEmpty && itemStyles.sellBtnDisabled]}
+            onPress={isEmpty ? undefined : onSell}
+            disabled={isEmpty}
+          >
+            <Ionicons name="remove-circle-outline" size={18} color={COLORS.white} />
             <Text style={itemStyles.sellBtnText}>Vente</Text>
           </TouchableOpacity>
           <View style={itemStyles.iconBtns}>
@@ -177,13 +244,14 @@ const itemStyles = StyleSheet.create({
   valueLabel: { fontSize: 11, color: COLORS.textSecondary, marginTop: 2 },
   actions: { alignItems: 'flex-end', gap: 6 },
   sellBtn: { backgroundColor: COLORS.primary, borderRadius: 8, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, gap: 4 },
+  sellBtnDisabled: { backgroundColor: COLORS.border },
   sellBtnText: { color: COLORS.white, fontSize: 12, ...FONTS.semibold },
   iconBtns: { flexDirection: 'row', gap: 4 },
   iconBtn: { padding: 6 },
 });
 
 export default function InventoryScreen({ navigation }: any) {
-  const { bottles, loading, deleteBottle, sellBottle } = useStock();
+  const { bottles, loading, error, deleteBottle, sellBottle } = useStock();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<BottleCategory | 'all'>('all');
   const [sellTarget, setSellTarget] = useState<Bottle | null>(null);
@@ -200,19 +268,29 @@ export default function InventoryScreen({ navigation }: any) {
       `Supprimer "${bottle.name}" ?`,
       [
         { text: 'Annuler', style: 'cancel' },
-        { text: 'Supprimer', style: 'destructive', onPress: () => deleteBottle(bottle.id) },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteBottle(bottle.id);
+            } catch {
+              Alert.alert('Erreur', 'Impossible de supprimer ce produit.');
+            }
+          },
+        },
       ]
     );
   };
 
   const handleSell = async (qty: number) => {
     if (!sellTarget) return;
-    if (qty > sellTarget.quantity) {
-      Alert.alert('Erreur', 'Quantité supérieure au stock disponible.');
-      return;
+    try {
+      await sellBottle(sellTarget.id, qty);
+      setSellTarget(null);
+    } catch {
+      Alert.alert('Erreur', 'Impossible d\'enregistrer la vente.');
     }
-    await sellBottle(sellTarget.id, qty);
-    setSellTarget(null);
   };
 
   if (loading) {
@@ -236,6 +314,13 @@ export default function InventoryScreen({ navigation }: any) {
           <Ionicons name="add" size={22} color={COLORS.white} />
         </TouchableOpacity>
       </View>
+
+      {error && (
+        <View style={styles.errorBanner}>
+          <Ionicons name="wifi-outline" size={16} color={COLORS.danger} />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
 
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
@@ -313,6 +398,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16 },
   title: { fontSize: 24, ...FONTS.bold, color: COLORS.text },
   addBtn: { backgroundColor: COLORS.primary, width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.dangerLight, paddingHorizontal: 20, paddingVertical: 8 },
+  errorText: { flex: 1, fontSize: 12, color: COLORS.danger },
   searchRow: { paddingHorizontal: 20, marginBottom: 8 },
   searchBox: { backgroundColor: COLORS.white, borderRadius: 10, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8, borderWidth: 1, borderColor: COLORS.border },
   searchInput: { flex: 1, fontSize: 14, color: COLORS.text },

@@ -23,6 +23,7 @@ interface StockContextType {
   bottles: Bottle[];
   suppliers: Supplier[];
   loading: boolean;
+  error: string | null;
   addBottle: (data: Omit<Bottle, 'id' | 'restaurantId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateBottle: (id: string, data: Partial<Bottle>) => Promise<void>;
   deleteBottle: (id: string) => Promise<void>;
@@ -41,6 +42,7 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
   const [bottles, setBottles] = useState<Bottle[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     requestNotificationPermissions();
@@ -53,6 +55,9 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
+
+    setLoading(true);
+    setError(null);
 
     const bottlesQ = query(
       collection(db, 'bottles'),
@@ -69,26 +74,41 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
       if (bottlesLoaded && suppliersLoaded) setLoading(false);
     };
 
-    const unsubBottles = onSnapshot(bottlesQ, (snap) => {
-      setBottles(
-        snap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-          createdAt: d.data().createdAt?.toDate() ?? new Date(),
-          updatedAt: d.data().updatedAt?.toDate() ?? new Date(),
-        })) as Bottle[]
-      );
-      bottlesLoaded = true;
-      checkLoaded();
-    });
+    const unsubBottles = onSnapshot(
+      bottlesQ,
+      (snap) => {
+        setBottles(
+          snap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+            createdAt: d.data().createdAt?.toDate() ?? new Date(),
+            updatedAt: d.data().updatedAt?.toDate() ?? new Date(),
+          })) as Bottle[]
+        );
+        bottlesLoaded = true;
+        checkLoaded();
+      },
+      () => {
+        setError('Impossible de charger le stock. Vérifiez votre connexion.');
+        bottlesLoaded = true;
+        checkLoaded();
+      }
+    );
 
-    const unsubSuppliers = onSnapshot(suppliersQ, (snap) => {
-      setSuppliers(
-        snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Supplier[]
-      );
-      suppliersLoaded = true;
-      checkLoaded();
-    });
+    const unsubSuppliers = onSnapshot(
+      suppliersQ,
+      (snap) => {
+        setSuppliers(
+          snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Supplier[]
+        );
+        suppliersLoaded = true;
+        checkLoaded();
+      },
+      () => {
+        suppliersLoaded = true;
+        checkLoaded();
+      }
+    );
 
     return () => {
       unsubBottles();
@@ -97,9 +117,10 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const addBottle = async (data: Omit<Bottle, 'id' | 'restaurantId' | 'createdAt' | 'updatedAt'>) => {
+    if (!user) throw new Error('Non connecté');
     await addDoc(collection(db, 'bottles'), {
       ...data,
-      restaurantId: user!.restaurantId,
+      restaurantId: user.restaurantId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -119,12 +140,12 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
   const sellBottle = async (id: string, qty: number) => {
     const bottle = bottles.find((b) => b.id === id);
     if (!bottle) return;
-    const newQty = Math.max(0, bottle.quantity - qty);
+    const safeQty = Math.min(qty, bottle.quantity);
+    const newQty = bottle.quantity - safeQty;
     await updateDoc(doc(db, 'bottles', id), {
       quantity: newQty,
       updatedAt: serverTimestamp(),
     });
-    // Notifications de stock faible
     if (newQty === 0) {
       await notifyOutOfStock(bottle.name);
     } else if (newQty <= bottle.minThreshold && bottle.quantity > bottle.minThreshold) {
@@ -133,9 +154,10 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addSupplier = async (data: Omit<Supplier, 'id' | 'restaurantId'>) => {
+    if (!user) throw new Error('Non connecté');
     await addDoc(collection(db, 'suppliers'), {
       ...data,
-      restaurantId: user!.restaurantId,
+      restaurantId: user.restaurantId,
     });
   };
 
@@ -159,6 +181,7 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
         bottles,
         suppliers,
         loading,
+        error,
         addBottle,
         updateBottle,
         deleteBottle,

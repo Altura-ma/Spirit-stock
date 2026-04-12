@@ -52,8 +52,13 @@ export default function ProfileScreen({ navigation }: any) {
     }
     setLoading(true);
     try {
-      const currentUser = auth.currentUser!;
-      const credential = EmailAuthProvider.credential(currentUser.email!, currentPassword);
+      const currentUser = auth.currentUser;
+      if (!currentUser || !currentUser.email) {
+        Alert.alert('Erreur', 'Session expirée. Veuillez vous reconnecter.');
+        setLoading(false);
+        return;
+      }
+      const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
       await reauthenticateWithCredential(currentUser, credential);
       await updatePassword(currentUser, newPassword);
       Alert.alert('Succès', 'Mot de passe modifié.');
@@ -62,9 +67,10 @@ export default function ProfileScreen({ navigation }: any) {
       setNewPassword('');
       setConfirmPassword('');
     } catch (e: any) {
-      const msg = e.code === 'auth/wrong-password'
-        ? 'Mot de passe actuel incorrect.'
-        : 'Erreur lors du changement de mot de passe.';
+      const msg =
+        e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential'
+          ? 'Mot de passe actuel incorrect.'
+          : 'Erreur lors du changement de mot de passe.';
       Alert.alert('Erreur', msg);
     } finally {
       setLoading(false);

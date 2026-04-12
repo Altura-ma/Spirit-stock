@@ -37,21 +37,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email!,
-            restaurantId: data.restaurantId,
-            restaurantName: data.restaurantName,
-          });
+      try {
+        if (firebaseUser) {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email ?? '',
+              restaurantId: data.restaurantId,
+              restaurantName: data.restaurantName,
+            });
+          } else {
+            // Doc utilisateur manquant : déconnexion propre
+            setUser(null);
+          }
+        } else {
+          setUser(null);
         }
-      } else {
+      } catch {
         setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
     return unsubscribe;
   }, []);
@@ -63,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = userDoc.data();
       setUser({
         uid: credential.user.uid,
-        email: credential.user.email!,
+        email: credential.user.email ?? '',
         restaurantId: data.restaurantId,
         restaurantName: data.restaurantName,
       });
@@ -79,7 +87,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       createdAt: serverTimestamp(),
     });
 
-    // Create default supplier
     await addDoc(collection(db, 'suppliers'), {
       name: DEFAULT_SUPPLIER.name,
       phone: DEFAULT_SUPPLIER.phone,

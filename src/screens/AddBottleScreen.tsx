@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,10 +26,17 @@ export default function AddBottleScreen({ navigation, route }: any) {
   const [quantity, setQuantity] = useState('');
   const [minThreshold, setMinThreshold] = useState('');
   const [price, setPrice] = useState('');
-  const [supplierId, setSupplierId] = useState(
-    route.params?.supplierId || (suppliers[0]?.id ?? '')
+  const [supplierId, setSupplierId] = useState<string>(
+    route.params?.supplierId || suppliers[0]?.id || ''
   );
   const [loading, setLoading] = useState(false);
+
+  // Sélectionne le premier fournisseur dès qu'ils sont chargés
+  useEffect(() => {
+    if (!supplierId && suppliers.length > 0) {
+      setSupplierId(suppliers[0].id);
+    }
+  }, [suppliers]);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showSupplierPicker, setShowSupplierPicker] = useState(false);
 

@@ -179,9 +179,15 @@ export default function SuppliersScreen() {
 
   const handleCall = (phone: string) => {
     const url = `tel:${phone}`;
-    Linking.canOpenURL(url).then((can) => {
-      if (can) Linking.openURL(url);
-    });
+    Linking.canOpenURL(url)
+      .then((can) => {
+        if (can) {
+          Linking.openURL(url);
+        } else {
+          Alert.alert('Impossible', 'Cet appareil ne peut pas passer d\'appel.');
+        }
+      })
+      .catch(() => Alert.alert('Erreur', 'Impossible d\'ouvrir le téléphone.'));
   };
 
   const handleDelete = (supplier: Supplier) => {
