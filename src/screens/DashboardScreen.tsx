@@ -15,7 +15,7 @@ import { COLORS, FONTS, SHADOWS } from '../theme';
 import { CATEGORY_LABELS } from '../types';
 
 export default function DashboardScreen({ navigation }: any) {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { bottles, loading, getLowStockBottles, getTotalStockValue } = useStock();
 
   const lowStock = getLowStockBottles();
@@ -38,11 +38,18 @@ export default function DashboardScreen({ navigation }: any) {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Bonjour 👋</Text>
+            <Text style={styles.greeting}>Bonjour</Text>
             <Text style={styles.restaurantName}>{user?.restaurantName}</Text>
           </View>
-          <TouchableOpacity onPress={signOut} style={styles.logoutBtn}>
-            <Ionicons name="log-out-outline" size={22} color={COLORS.textSecondary} />
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Profile')}
+            style={styles.profileBtn}
+          >
+            <View style={styles.avatarSmall}>
+              <Text style={styles.avatarSmallText}>
+                {user?.restaurantName?.charAt(0)?.toUpperCase() ?? '?'}
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -66,15 +73,16 @@ export default function DashboardScreen({ navigation }: any) {
 
         {/* Out of stock banner */}
         {outOfStock.length > 0 && (
-          <View style={styles.outOfStockBanner}>
+          <TouchableOpacity
+            style={styles.outOfStockBanner}
+            onPress={() => navigation.navigate('Restock')}
+          >
             <Ionicons name="close-circle" size={20} color={COLORS.danger} />
             <Text style={styles.outOfStockText}>
               {outOfStock.length} produit{outOfStock.length > 1 ? 's' : ''} épuisé{outOfStock.length > 1 ? 's' : ''}
             </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Restock')}>
-              <Text style={styles.outOfStockLink}>Voir →</Text>
-            </TouchableOpacity>
-          </View>
+            <Text style={styles.outOfStockLink}>Voir →</Text>
+          </TouchableOpacity>
         )}
 
         {/* Low stock alerts */}
@@ -99,7 +107,7 @@ export default function DashboardScreen({ navigation }: any) {
                   <Text style={[styles.alertQty, bottle.quantity === 0 && { color: COLORS.danger }]}>
                     {bottle.quantity} restant{bottle.quantity > 1 ? 's' : ''}
                   </Text>
-                  <Text style={styles.alertMin}>seuil: {bottle.minThreshold}</Text>
+                  <Text style={styles.alertMin}>seuil : {bottle.minThreshold}</Text>
                 </View>
               </View>
             ))}
@@ -120,7 +128,9 @@ export default function DashboardScreen({ navigation }: any) {
           <View style={styles.emptyCard}>
             <Ionicons name="wine-outline" size={48} color={COLORS.border} />
             <Text style={styles.emptyTitle}>Aucun produit</Text>
-            <Text style={styles.emptySub}>Commencez par ajouter vos bouteilles dans l'onglet Inventaire</Text>
+            <Text style={styles.emptySub}>
+              Commencez par ajouter vos bouteilles dans l'onglet Inventaire
+            </Text>
             <TouchableOpacity
               style={styles.emptyBtn}
               onPress={() => navigation.navigate('Inventory')}
@@ -141,7 +151,9 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   greeting: { fontSize: 14, color: COLORS.textSecondary },
   restaurantName: { fontSize: 22, ...FONTS.bold, color: COLORS.text },
-  logoutBtn: { padding: 8 },
+  profileBtn: { padding: 2 },
+  avatarSmall: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
+  avatarSmallText: { fontSize: 16, ...FONTS.bold, color: COLORS.white },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   statCard: { backgroundColor: COLORS.white, borderRadius: 14, padding: 16, ...SHADOWS.card, alignItems: 'center' },
   statValue: { fontSize: 22, ...FONTS.bold, color: COLORS.primary },

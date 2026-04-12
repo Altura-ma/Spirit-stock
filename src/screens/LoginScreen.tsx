@@ -31,7 +31,7 @@ export default function LoginScreen({ navigation }: any) {
     setLoading(true);
     try {
       await signIn(email.trim().toLowerCase(), password);
-    } catch (e: any) {
+    } catch {
       Alert.alert('Connexion échouée', 'Email ou mot de passe incorrect.');
     } finally {
       setLoading(false);
@@ -84,6 +84,13 @@ export default function LoginScreen({ navigation }: any) {
             </View>
 
             <TouchableOpacity
+              style={styles.forgotLink}
+              onPress={() => navigation.navigate('ForgotPassword')}
+            >
+              <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={styles.loginBtn}
               onPress={handleLogin}
               disabled={loading}
@@ -123,6 +130,8 @@ const styles = StyleSheet.create({
   input: { backgroundColor: COLORS.inputBg, borderRadius: 10, padding: 14, fontSize: 15, color: COLORS.text, borderWidth: 1, borderColor: COLORS.border, marginBottom: 4 },
   passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   eyeBtn: { padding: 14, backgroundColor: COLORS.inputBg, borderRadius: 10, borderWidth: 1, borderColor: COLORS.border },
+  forgotLink: { alignSelf: 'flex-end', marginTop: 8 },
+  forgotText: { fontSize: 13, color: COLORS.primary, ...FONTS.medium },
   loginBtn: { backgroundColor: COLORS.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 24 },
   loginBtnText: { color: COLORS.white, fontSize: 16, ...FONTS.bold },
   registerLink: { alignItems: 'center', marginTop: 20 },

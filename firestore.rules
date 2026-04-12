@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Chaque utilisateur peut lire/écrire son propre profil
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Fonction utilitaire : récupère le restaurantId de l'utilisateur connecté
+    function myRestaurantId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.restaurantId;
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Restaurants : lecture par les membres, écriture par le propriétaire uniquement
+    match /restaurants/{restaurantId} {
+      allow read: if isAuthenticated() && myRestaurantId() == restaurantId;
+      allow write: if isAuthenticated() && myRestaurantId() == restaurantId;
+    }
+
+    // Bouteilles : accès uniquement aux données du restaurant de l'utilisateur
+    match /bottles/{bottleId} {
+      allow read, update, delete: if isAuthenticated() &&
+        myRestaurantId() == resource.data.restaurantId;
+      allow create: if isAuthenticated() &&
+        myRestaurantId() == request.resource.data.restaurantId;
+    }
+
+    // Fournisseurs : même logique
+    match /suppliers/{supplierId} {
+      allow read, update, delete: if isAuthenticated() &&
+        myRestaurantId() == resource.data.restaurantId;
+      allow create: if isAuthenticated() &&
+        myRestaurantId() == request.resource.data.restaurantId;
+    }
+  }
+}

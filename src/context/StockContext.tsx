@@ -13,6 +13,11 @@ import {
 import { db } from '../config/firebase';
 import { Bottle, Supplier } from '../types';
 import { useAuth } from './AuthContext';
+import {
+  requestNotificationPermissions,
+  notifyLowStock,
+  notifyOutOfStock,
+} from '../services/notifications';
 
 interface StockContextType {
   bottles: Bottle[];
@@ -38,6 +43,10 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    requestNotificationPermissions();
+  }, []);
+
+  useEffect(() => {
     if (!user) {
       setBottles([]);
       setSuppliers([]);
@@ -56,7 +65,6 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
 
     let bottlesLoaded = false;
     let suppliersLoaded = false;
-
     const checkLoaded = () => {
       if (bottlesLoaded && suppliersLoaded) setLoading(false);
     };
@@ -116,6 +124,12 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
       quantity: newQty,
       updatedAt: serverTimestamp(),
     });
+    // Notifications de stock faible
+    if (newQty === 0) {
+      await notifyOutOfStock(bottle.name);
+    } else if (newQty <= bottle.minThreshold && bottle.quantity > bottle.minThreshold) {
+      await notifyLowStock(bottle.name, newQty, bottle.minThreshold);
+    }
   };
 
   const addSupplier = async (data: Omit<Supplier, 'id' | 'restaurantId'>) => {
