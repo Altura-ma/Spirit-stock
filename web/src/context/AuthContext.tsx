@@ -23,18 +23,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async (firebaseUser) => {
-      try {
-        if (firebaseUser) {
-          const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
-          if (snap.exists()) {
-            const d = snap.data()
-            setUser({ uid: firebaseUser.uid, email: firebaseUser.email ?? '', restaurantId: d.restaurantId, restaurantName: d.restaurantName })
+    let unsub = () => {}
+    try {
+      unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+        try {
+          if (firebaseUser) {
+            const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
+            if (snap.exists()) {
+              const d = snap.data()
+              setUser({ uid: firebaseUser.uid, email: firebaseUser.email ?? '', restaurantId: d.restaurantId, restaurantName: d.restaurantName })
+            } else setUser(null)
           } else setUser(null)
-        } else setUser(null)
-      } catch { setUser(null) }
-      finally { setLoading(false) }
-    })
+        } catch { setUser(null) }
+        finally { setLoading(false) }
+      }, () => { setUser(null); setLoading(false) })
+    } catch (e) {
+      console.error('Firebase auth error:', e)
+      setLoading(false)
+    }
+    return unsub
   }, [])
 
   const signIn = async (email: string, password: string) => {
