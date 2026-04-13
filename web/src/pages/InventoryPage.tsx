@@ -76,7 +76,7 @@ export default function InventoryPage() {
       </div>
 
       {/* Category filter */}
-      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
         {CATS.map(c => (
           <button key={c.value} onClick={() => setCat(c.value)}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${cat === c.value ? 'bg-primary text-white border-primary' : 'bg-white text-gray-500 border-gray-200'}`}>
