@@ -12,14 +12,14 @@ export default function ProfilePage() {
   const [showPwd, setShowPwd] = useState(false)
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
-  const [confirm, setConfirm] = useState('')
+  const [confirmPwd, setConfirmPwd] = useState('')
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
   const handleChangePwd = async (e: React.FormEvent) => {
     e.preventDefault()
     setMsg(null)
-    if (next !== confirm) { setMsg({ type: 'err', text: 'Les mots de passe ne correspondent pas.' }); return }
+    if (next !== confirmPwd) { setMsg({ type: 'err', text: 'Les mots de passe ne correspondent pas.' }); return }
     if (next.length < 6) { setMsg({ type: 'err', text: 'Min. 6 caractères.' }); return }
     setLoading(true)
     try {
@@ -28,7 +28,7 @@ export default function ProfilePage() {
       await reauthenticateWithCredential(cu, EmailAuthProvider.credential(cu.email, current))
       await updatePassword(cu, next)
       setMsg({ type: 'ok', text: 'Mot de passe modifié.' })
-      setCurrent(''); setNext(''); setConfirm(''); setShowPwd(false)
+      setCurrent(''); setNext(''); setConfirmPwd(''); setShowPwd(false)
     } catch (err: any) {
       setMsg({ type: 'err', text: err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential' ? 'Mot de passe actuel incorrect.' : 'Erreur lors du changement.' })
     } finally { setLoading(false) }
@@ -74,7 +74,7 @@ export default function ProfilePage() {
             {msg && <div className={`text-sm p-3 rounded-xl ${msg.type === 'ok' ? 'bg-success-light text-success' : 'bg-danger-light text-danger'}`}>{msg.text}</div>}
             <div><label className="label">Mot de passe actuel</label><input className="input" type="password" value={current} onChange={e => setCurrent(e.target.value)} placeholder="••••••••" required /></div>
             <div><label className="label">Nouveau mot de passe</label><input className="input" type="password" value={next} onChange={e => setNext(e.target.value)} placeholder="Min. 6 caractères" required /></div>
-            <div><label className="label">Confirmer</label><input className="input" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••" required /></div>
+            <div><label className="label">Confirmer</label><input className="input" type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} placeholder="••••••••" required /></div>
             <button type="submit" disabled={loading} className="btn-primary">
               {loading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Enregistrer'}
             </button>
@@ -84,7 +84,7 @@ export default function ProfilePage() {
 
       {/* Sign out */}
       <div className="card">
-        <button onClick={() => { if (confirm('Se déconnecter ?')) signOut() }} className="w-full flex items-center gap-3 p-4 text-danger">
+        <button onClick={() => { if (window.confirm('Se déconnecter ?')) signOut() }} className="w-full flex items-center gap-3 p-4 text-danger">
           <LogOut size={18} />
           <span className="font-medium">Se déconnecter</span>
         </button>

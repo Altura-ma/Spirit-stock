@@ -49,7 +49,7 @@ export default function SuppliersPage() {
   }
 
   const handleDelete = (s: Supplier) => {
-    if (confirm(`Supprimer "${s.name}" ?`)) deleteSupplier(s.id)
+    if (window.confirm(`Supprimer "${s.name}" ?`)) deleteSupplier(s.id)
   }
 
   return (
