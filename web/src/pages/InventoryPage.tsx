@@ -26,9 +26,9 @@ function SellModal({ bottle, onClose, onSell }: { bottle: Bottle; onClose: () =>
         <p className="text-primary text-sm font-medium mb-4">Stock disponible : {bottle.quantity}</p>
         <p className="label">Quantité vendue</p>
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => adjust(-1)} className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-primary">−</button>
-          <input type="number" value={qty} onChange={e => setQty(Math.max(1, Math.min(bottle.quantity, parseInt(e.target.value) || 1)))} className="input text-center text-xl font-bold flex-1" />
-          <button onClick={() => adjust(1)} className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-primary">+</button>
+          <button onClick={() => adjust(-1)} className="w-11 h-11 rounded-full border-2 border-gray-200 flex items-center justify-center text-primary text-xl font-light transition-colors active:bg-gray-50">−</button>
+          <input type="number" value={qty} onChange={e => setQty(Math.max(1, Math.min(bottle.quantity, parseInt(e.target.value) || 1)))} className="input text-center text-2xl font-bold flex-1" />
+          <button onClick={() => adjust(1)} className="w-11 h-11 rounded-full border-2 border-gray-200 flex items-center justify-center text-primary text-xl font-light transition-colors active:bg-gray-50">+</button>
         </div>
         <div className="flex gap-3">
           <button onClick={onClose} className="btn-secondary flex-1">Annuler</button>
@@ -54,14 +54,14 @@ export default function InventoryPage() {
   )
 
   const handleDelete = (b: Bottle) => {
-    if (confirm(`Supprimer "${b.name}" ?`)) deleteBottle(b.id)
+    if (window.confirm(`Supprimer "${b.name}" ?`)) deleteBottle(b.id)
   }
 
   return (
     <div className="p-4 space-y-3">
       <div className="flex items-center justify-between pt-2">
         <h1 className="text-xl font-bold text-gray-900">Inventaire</h1>
-        <Link to="/inventory/add" className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white">
+        <Link to="/inventory/add" className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white shadow-sm">
           <Plus size={22} />
         </Link>
       </div>
@@ -76,7 +76,7 @@ export default function InventoryPage() {
       </div>
 
       {/* Category filter */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {CATS.map(c => (
           <button key={c.value} onClick={() => setCat(c.value)}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${cat === c.value ? 'bg-primary text-white border-primary' : 'bg-white text-gray-500 border-gray-200'}`}>
@@ -88,38 +88,46 @@ export default function InventoryPage() {
       {/* List */}
       <div className="space-y-2">
         {filtered.map(b => {
-          const isLow = b.quantity <= b.minThreshold
+          const isLow = b.quantity > 0 && b.quantity <= b.minThreshold
           const isEmpty = b.quantity === 0
           return (
             <div key={b.id} className={`card p-4 ${isEmpty ? 'border-l-4 border-danger' : isLow ? 'border-l-4 border-warning' : ''}`}>
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-gray-900">{b.name}</span>
-                    {isEmpty && <span className="text-[10px] font-bold text-danger bg-danger-light px-1.5 py-0.5 rounded">ÉPUISÉ</span>}
-                    {isLow && !isEmpty && <span className="text-[10px] font-bold text-warning bg-warning-light px-1.5 py-0.5 rounded">FAIBLE</span>}
+              {/* Top row: name + action buttons */}
+              <div className="flex items-start gap-2 mb-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-gray-900 leading-tight">{b.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-gray-400">{CATEGORY_LABELS[b.category]}</span>
+                    {isEmpty && <span className="text-[10px] font-bold text-danger bg-danger-light px-1.5 py-0.5 rounded-md">ÉPUISÉ</span>}
+                    {isLow && <span className="text-[10px] font-bold text-warning bg-warning-light px-1.5 py-0.5 rounded-md">FAIBLE</span>}
                   </div>
-                  <p className="text-xs text-gray-400 mt-0.5">{CATEGORY_LABELS[b.category]}</p>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => !isEmpty && setSelling(b)} disabled={isEmpty}
-                    className={`flex items-center gap-1 text-xs font-semibold px-2 py-1.5 rounded-lg ${isEmpty ? 'bg-gray-100 text-gray-400' : 'bg-primary text-white'}`}>
-                    <MinusCircle size={14} /> Vente
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button onClick={() => navigate(`/inventory/edit/${b.id}`)} className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-primary rounded-lg">
+                    <Pencil size={15} />
+                  </button>
+                  <button onClick={() => handleDelete(b)} className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-danger rounded-lg">
+                    <Trash2 size={15} />
+                  </button>
+                  <button
+                    onClick={() => !isEmpty && setSelling(b)}
+                    disabled={isEmpty}
+                    className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg ${isEmpty ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-primary text-white'}`}>
+                    <MinusCircle size={13} /> Vente
                   </button>
                 </div>
               </div>
-              <div className="flex items-end justify-between">
-                <div>
-                  <span className={`text-2xl font-bold ${isEmpty ? 'text-danger' : 'text-primary'}`}>{b.quantity}</span>
-                  <span className="text-xs text-gray-400 ml-1">unités · seuil {b.minThreshold}</span>
+              {/* Bottom row: qty | price — clean 2-col layout */}
+              <div className="flex items-end justify-between pt-2 border-t border-gray-50">
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`text-2xl font-bold leading-none ${isEmpty ? 'text-danger' : isLow ? 'text-warning' : 'text-primary'}`}>{b.quantity}</span>
+                  <span className="text-xs text-gray-400">unités</span>
+                  <span className="text-xs text-gray-300 mx-0.5">·</span>
+                  <span className="text-xs text-gray-400">min. {b.minThreshold}</span>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-gray-800">{b.price.toFixed(2)} €</p>
                   <p className="text-xs text-gray-400">val. {(b.quantity * b.price).toFixed(0)} €</p>
-                </div>
-                <div className="flex gap-1">
-                  <button onClick={() => navigate(`/inventory/edit/${b.id}`)} className="p-2 text-primary"><Pencil size={16} /></button>
-                  <button onClick={() => handleDelete(b)} className="p-2 text-danger"><Trash2 size={16} /></button>
                 </div>
               </div>
             </div>

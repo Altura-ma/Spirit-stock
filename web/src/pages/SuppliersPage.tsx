@@ -18,7 +18,7 @@ function SupplierModal({ supplier, onClose, onSave }: { supplier: Supplier | nul
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="card p-6 w-full max-w-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-lg text-gray-900">{supplier ? 'Modifier' : 'Nouveau fournisseur'}</h3>
