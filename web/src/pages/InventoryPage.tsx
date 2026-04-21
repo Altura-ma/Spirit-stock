@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Search, X, Pencil, Trash2, MinusCircle } from 'lucide-react'
+import { Plus, Search, X, Pencil, Trash2, MinusCircle, ShoppingCart } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { CATEGORY_LABELS, BottleCategory, Bottle } from '../types'
 
@@ -42,7 +42,7 @@ function SellModal({ bottle, onClose, onSell }: { bottle: Bottle; onClose: () =>
 }
 
 export default function InventoryPage() {
-  const { bottles, deleteBottle, sellBottle, error } = useStock()
+  const { bottles, deleteBottle, sellBottle, error, cart, addToCart, setCartQty } = useStock()
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState<BottleCategory | 'all'>('all')
   const [selling, setSelling] = useState<Bottle | null>(null)
@@ -90,9 +90,10 @@ export default function InventoryPage() {
         {filtered.map(b => {
           const isLow = b.quantity > 0 && b.quantity <= b.minThreshold
           const isEmpty = b.quantity === 0
+          const cartQty = cart[b.id] ?? 0
           return (
             <div key={b.id} className={`card p-4 ${isEmpty ? 'border-l-4 border-danger' : isLow ? 'border-l-4 border-warning' : ''}`}>
-              {/* Top row: name + action buttons */}
+              {/* Top row: name + edit/delete */}
               <div className="flex items-start gap-2 mb-3">
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-gray-900 leading-tight">{b.name}</p>
@@ -109,15 +110,9 @@ export default function InventoryPage() {
                   <button onClick={() => handleDelete(b)} className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-danger rounded-lg">
                     <Trash2 size={15} />
                   </button>
-                  <button
-                    onClick={() => !isEmpty && setSelling(b)}
-                    disabled={isEmpty}
-                    className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg ${isEmpty ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-primary text-white'}`}>
-                    <MinusCircle size={13} /> Vente
-                  </button>
                 </div>
               </div>
-              {/* Bottom row: qty | price — clean 2-col layout */}
+              {/* Middle row: qty | price */}
               <div className="flex items-end justify-between pt-2 border-t border-gray-50">
                 <div className="flex items-baseline gap-1.5">
                   <span className={`text-2xl font-bold leading-none ${isEmpty ? 'text-danger' : isLow ? 'text-warning' : 'text-primary'}`}>{b.quantity}</span>
@@ -129,6 +124,28 @@ export default function InventoryPage() {
                   <p className="text-sm font-bold text-gray-800">{b.price.toFixed(2)} €</p>
                   <p className="text-xs text-gray-400">val. {(b.quantity * b.price).toFixed(0)} €</p>
                 </div>
+              </div>
+              {/* Bottom row: Vente + Achat actions */}
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => !isEmpty && setSelling(b)}
+                  disabled={isEmpty}
+                  className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold py-2 rounded-lg ${isEmpty ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-primary text-white active:opacity-75'}`}>
+                  <MinusCircle size={15} /> Vente
+                </button>
+                {cartQty > 0 ? (
+                  <div className="flex-1 flex items-center justify-between bg-success/10 border border-success rounded-lg px-1">
+                    <button onClick={() => setCartQty(b.id, cartQty - 1)} className="w-8 h-8 flex items-center justify-center text-success text-lg font-bold active:opacity-60">−</button>
+                    <span className="text-sm font-bold text-success">{cartQty} à commander</span>
+                    <button onClick={() => setCartQty(b.id, cartQty + 1)} className="w-8 h-8 flex items-center justify-center text-success text-lg font-bold active:opacity-60">+</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => addToCart(b.id)}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold py-2 rounded-lg bg-white border-2 border-success text-success active:opacity-75">
+                    <ShoppingCart size={15} /> Achat
+                  </button>
+                )}
               </div>
             </div>
           )

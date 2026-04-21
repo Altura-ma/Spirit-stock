@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, restaurantName: string) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     const restRef = await addDoc(collection(db, 'restaurants'), { name: restaurantName, ownerId: cred.user.uid, createdAt: serverTimestamp() })
-    await addDoc(collection(db, 'suppliers'), { name: 'Louis Mathieu', phone: '0782407933', restaurantId: restRef.id })
+    await addDoc(collection(db, 'suppliers'), { name: 'Louis Mathieu', phone: '0782407933', email: 'notifymedriss@gmail.com', restaurantId: restRef.id })
     await setDoc(doc(db, 'users', cred.user.uid), { email, restaurantId: restRef.id, restaurantName, createdAt: serverTimestamp() })
     setUser({ uid: cred.user.uid, email, restaurantId: restRef.id, restaurantName })
   }

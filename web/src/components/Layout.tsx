@@ -1,15 +1,17 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutGrid, Wine, AlertCircle, Phone } from 'lucide-react'
+import { LayoutGrid, Wine, ShoppingCart, ClipboardList, Phone } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 
 export default function Layout() {
-  const { getLowStock } = useStock()
-  const lowCount = getLowStock().length
+  const { getCartTotal, getPendingOrders } = useStock()
+  const cartCount = getCartTotal()
+  const pendingCount = getPendingOrders().length
 
   const tabs = [
     { to: '/', icon: LayoutGrid, label: 'Accueil', exact: true },
     { to: '/inventory', icon: Wine, label: 'Inventaire' },
-    { to: '/restock', icon: AlertCircle, label: 'Commander', badge: lowCount },
+    { to: '/restock', icon: ShoppingCart, label: 'Commander', badge: cartCount },
+    { to: '/orders', icon: ClipboardList, label: 'Commandes', badge: pendingCount },
     { to: '/suppliers', icon: Phone, label: 'Fournisseurs' },
   ]
 
@@ -40,7 +42,7 @@ export default function Layout() {
                   </span>
                 )}
               </div>
-              <span>{label}</span>
+              <span className="text-[11px]">{label}</span>
             </NavLink>
           ))}
         </div>

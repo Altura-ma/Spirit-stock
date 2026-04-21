@@ -29,6 +29,7 @@ export interface Supplier {
   id: string
   name: string
   phone: string
+  email: string
   restaurantId: string
 }
 
@@ -37,4 +38,22 @@ export interface AppUser {
   email: string
   restaurantId: string
   restaurantName: string
+}
+
+export interface OrderItem {
+  bottleId: string
+  bottleName: string
+  category: BottleCategory
+  quantity: number
+}
+
+export interface Order {
+  id: string
+  restaurantId: string
+  supplierId: string
+  supplierName: string
+  items: OrderItem[]
+  status: 'pending' | 'received'
+  createdAt: Date
+  receivedAt?: Date
 }

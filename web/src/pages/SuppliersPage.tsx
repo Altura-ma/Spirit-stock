@@ -1,18 +1,19 @@
 import { useState } from 'react'
-import { Phone, Pencil, Trash2, Plus, X } from 'lucide-react'
+import { Phone, Pencil, Trash2, Plus, X, Mail } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { Supplier } from '../types'
 
-function SupplierModal({ supplier, onClose, onSave }: { supplier: Supplier | null; onClose: () => void; onSave: (n: string, p: string) => Promise<void> }) {
+function SupplierModal({ supplier, onClose, onSave }: { supplier: Supplier | null; onClose: () => void; onSave: (n: string, p: string, e: string) => Promise<void> }) {
   const [name, setName] = useState(supplier?.name ?? '')
   const [phone, setPhone] = useState(supplier?.phone ?? '')
+  const [email, setEmail] = useState(supplier?.email ?? '')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
     setLoading(true)
-    await onSave(name.trim(), phone.trim().replace(/\s/g, ''))
+    await onSave(name.trim(), phone.trim().replace(/\s/g, ''), email.trim())
     setLoading(false)
     onClose()
   }
@@ -27,6 +28,8 @@ function SupplierModal({ supplier, onClose, onSave }: { supplier: Supplier | nul
         <form onSubmit={handleSubmit} className="space-y-4">
           <div><label className="label">Nom *</label><input className="input" value={name} onChange={e => setName(e.target.value)} placeholder="Nom du fournisseur" required /></div>
           <div><label className="label">Téléphone</label><input className="input" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="0612345678" /></div>
+          <div><label className="label">Email</label><input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="fournisseur@exemple.com" /></div>
+          <p className="text-xs text-gray-400 -mt-2">L'email est utilisé pour envoyer les commandes automatiquement.</p>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Annuler</button>
             <button type="submit" disabled={loading} className="btn-primary flex-1">
@@ -43,9 +46,9 @@ export default function SuppliersPage() {
   const { suppliers, bottles, addSupplier, updateSupplier, deleteSupplier } = useStock()
   const [modal, setModal] = useState<{ open: boolean; supplier: Supplier | null }>({ open: false, supplier: null })
 
-  const handleSave = async (name: string, phone: string) => {
-    if (modal.supplier) await updateSupplier(modal.supplier.id, { name, phone })
-    else await addSupplier({ name, phone })
+  const handleSave = async (name: string, phone: string, email: string) => {
+    if (modal.supplier) await updateSupplier(modal.supplier.id, { name, phone, email })
+    else await addSupplier({ name, phone, email })
   }
 
   const handleDelete = (s: Supplier) => {
@@ -69,7 +72,12 @@ export default function SuppliersPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-gray-900 truncate">{s.name}</p>
-              <p className="text-sm text-gray-400">{s.phone || 'Aucun numéro'}</p>
+              <p className="text-sm text-gray-400 truncate">{s.phone || 'Aucun numéro'}</p>
+              {s.email ? (
+                <p className="text-xs text-gray-400 truncate flex items-center gap-1 mt-0.5"><Mail size={10} />{s.email}</p>
+              ) : (
+                <p className="text-xs text-warning flex items-center gap-1 mt-0.5"><Mail size={10} />Aucun email</p>
+              )}
               <p className="text-xs text-primary mt-0.5">{bottles.filter(b => b.supplierId === s.id).length} produit(s)</p>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">

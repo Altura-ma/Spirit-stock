@@ -12,6 +12,7 @@ import InventoryPage from './pages/InventoryPage'
 import AddBottlePage from './pages/AddBottlePage'
 import EditBottlePage from './pages/EditBottlePage'
 import RestockPage from './pages/RestockPage'
+import OrdersPage from './pages/OrdersPage'
 import SuppliersPage from './pages/SuppliersPage'
 import ProfilePage from './pages/ProfilePage'
 
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="inventory/add" element={<AddBottlePage />} />
             <Route path="inventory/edit/:id" element={<EditBottlePage />} />
             <Route path="restock" element={<RestockPage />} />
+            <Route path="orders" element={<OrdersPage />} />
             <Route path="suppliers" element={<SuppliersPage />} />
             <Route path="profile" element={<ProfilePage />} />
           </Route>
