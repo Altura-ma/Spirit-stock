@@ -53,7 +53,8 @@ export interface Order {
   supplierId: string
   supplierName: string
   items: OrderItem[]
-  status: 'pending' | 'received'
+  status: 'pending' | 'received' | 'cancelled'
   createdAt: Date
   receivedAt?: Date
+  cancelledAt?: Date
 }

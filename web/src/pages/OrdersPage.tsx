@@ -3,13 +3,18 @@ import { CheckCircle2, Clock, Package, XCircle } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { CATEGORY_LABELS } from '../types'
 
-type Filter = 'all' | 'pending' | 'received'
+type Filter = 'all' | 'pending' | 'received' | 'cancelled'
 
 const FILTERS: { value: Filter; label: string }[] = [
   { value: 'all', label: 'Toutes' },
   { value: 'pending', label: 'En attente' },
   { value: 'received', label: 'Reçues' },
+  { value: 'cancelled', label: 'Annulées' },
 ]
+
+const STATUS_ORDER: Record<'pending' | 'received' | 'cancelled', number> = {
+  pending: 0, received: 1, cancelled: 2,
+}
 
 function formatDate(d: Date) {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -24,7 +29,7 @@ export default function OrdersPage() {
   const filtered = orders
     .filter(o => filter === 'all' || o.status === filter)
     .sort((a, b) => {
-      if (a.status !== b.status) return a.status === 'pending' ? -1 : 1
+      if (a.status !== b.status) return STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
       return b.createdAt.getTime() - a.createdAt.getTime()
     })
 
@@ -36,7 +41,7 @@ export default function OrdersPage() {
   }
 
   const handleCancel = async (id: string) => {
-    if (!window.confirm('Annuler cette commande ? Elle sera supprimée définitivement.')) return
+    if (!window.confirm('Annuler cette commande ? Elle sera conservée dans l\'historique.')) return
     setCancellingId(id)
     await cancelOrder(id)
     setCancellingId(null)
@@ -65,26 +70,35 @@ export default function OrdersPage() {
         {filtered.map(o => {
           const totalQty = o.items.reduce((s, i) => s + i.quantity, 0)
           const isPending = o.status === 'pending'
+          const isCancelled = o.status === 'cancelled'
+          const borderClass = isPending ? 'border-warning' : isCancelled ? 'border-gray-300' : 'border-success'
           return (
-            <div key={o.id} className={`card p-4 ${isPending ? 'border-l-4 border-warning' : 'border-l-4 border-success'}`}>
+            <div key={o.id} className={`card p-4 border-l-4 ${borderClass} ${isCancelled ? 'opacity-70' : ''}`}>
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-bold text-gray-900 truncate">{o.supplierName}</p>
-                    {isPending ? (
+                    <p className={`font-bold truncate ${isCancelled ? 'text-gray-500 line-through' : 'text-gray-900'}`}>{o.supplierName}</p>
+                    {isPending && (
                       <span className="text-[10px] font-bold text-warning bg-warning-light px-1.5 py-0.5 rounded-md flex items-center gap-1">
                         <Clock size={10} /> EN ATTENTE
                       </span>
-                    ) : (
+                    )}
+                    {!isPending && !isCancelled && (
                       <span className="text-[10px] font-bold text-success bg-success-light px-1.5 py-0.5 rounded-md flex items-center gap-1">
                         <CheckCircle2 size={10} /> REÇUE
+                      </span>
+                    )}
+                    {isCancelled && (
+                      <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                        <XCircle size={10} /> ANNULÉE
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">Commandée le {formatDate(o.createdAt)}</p>
                   {o.receivedAt && <p className="text-xs text-success mt-0.5">Reçue le {formatDate(o.receivedAt)}</p>}
+                  {o.cancelledAt && <p className="text-xs text-gray-500 mt-0.5">Annulée le {formatDate(o.cancelledAt)}</p>}
                 </div>
-                <div className="flex items-center gap-1 text-primary flex-shrink-0">
+                <div className={`flex items-center gap-1 flex-shrink-0 ${isCancelled ? 'text-gray-400' : 'text-primary'}`}>
                   <Package size={14} />
                   <span className="text-sm font-bold">{totalQty}</span>
                 </div>

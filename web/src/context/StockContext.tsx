@@ -64,7 +64,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
     const uorders = onSnapshot(
       query(collection(db, 'orders'), where('restaurantId', '==', user.restaurantId)),
       snap => {
-        setOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() ?? new Date(), receivedAt: d.data().receivedAt?.toDate() })) as Order[])
+        setOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() ?? new Date(), receivedAt: d.data().receivedAt?.toDate(), cancelledAt: d.data().cancelledAt?.toDate() })) as Order[])
         oLoaded = true; check()
       },
       () => { oLoaded = true; check() }
@@ -127,7 +127,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
     }))
   }
 
-  const cancelOrder = async (orderId: string) => await deleteDoc(doc(db, 'orders', orderId))
+  const cancelOrder = async (orderId: string) => await updateDoc(doc(db, 'orders', orderId), { status: 'cancelled', cancelledAt: serverTimestamp() })
 
   const getPendingOrders = () => orders.filter(o => o.status === 'pending')
   const getLowStock = () => bottles.filter(b => b.quantity <= b.minThreshold)
