@@ -28,6 +28,7 @@ interface StockContextType {
   getCartTotal: () => number
   createOrder: (supplierId: string, items: OrderItem[]) => Promise<string>
   markOrderReceived: (orderId: string) => Promise<void>
+  cancelOrder: (orderId: string) => Promise<void>
   getPendingOrders: () => Order[]
   getLowStock: () => Bottle[]
   getTotalValue: () => number
@@ -126,6 +127,8 @@ export function StockProvider({ children }: { children: ReactNode }) {
     }))
   }
 
+  const cancelOrder = async (orderId: string) => await deleteDoc(doc(db, 'orders', orderId))
+
   const getPendingOrders = () => orders.filter(o => o.status === 'pending')
   const getLowStock = () => bottles.filter(b => b.quantity <= b.minThreshold)
   const getTotalValue = () => bottles.reduce((s, b) => s + b.quantity * b.price, 0)
@@ -136,7 +139,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
       addBottle, updateBottle, deleteBottle, sellBottle,
       addSupplier, updateSupplier, deleteSupplier,
       cart, addToCart, removeFromCart, setCartQty, clearSupplierCart, clearCart, getCartTotal,
-      createOrder, markOrderReceived, getPendingOrders,
+      createOrder, markOrderReceived, cancelOrder, getPendingOrders,
       getLowStock, getTotalValue,
     }}>
       {children}

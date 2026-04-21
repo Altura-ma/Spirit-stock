@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, Clock, Package } from 'lucide-react'
+import { CheckCircle2, Clock, Package, XCircle } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { CATEGORY_LABELS } from '../types'
 
@@ -16,9 +16,10 @@ function formatDate(d: Date) {
 }
 
 export default function OrdersPage() {
-  const { orders, markOrderReceived } = useStock()
+  const { orders, markOrderReceived, cancelOrder } = useStock()
   const [filter, setFilter] = useState<Filter>('all')
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
 
   const filtered = orders
     .filter(o => filter === 'all' || o.status === filter)
@@ -32,6 +33,13 @@ export default function OrdersPage() {
     setLoadingId(id)
     await markOrderReceived(id)
     setLoadingId(null)
+  }
+
+  const handleCancel = async (id: string) => {
+    if (!window.confirm('Annuler cette commande ? Elle sera supprimée définitivement.')) return
+    setCancellingId(id)
+    await cancelOrder(id)
+    setCancellingId(null)
   }
 
   return (
@@ -95,16 +103,28 @@ export default function OrdersPage() {
               </div>
 
               {isPending && (
-                <button
-                  onClick={() => handleReceive(o.id)}
-                  disabled={loadingId === o.id}
-                  className="mt-3 w-full flex items-center justify-center gap-2 bg-success text-white font-semibold py-2.5 rounded-lg active:opacity-75">
-                  {loadingId === o.id ? (
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <><CheckCircle2 size={16} /> Marquer comme reçue</>
-                  )}
-                </button>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => handleCancel(o.id)}
+                    disabled={cancellingId === o.id || loadingId === o.id}
+                    className="flex items-center justify-center gap-1.5 bg-white border-2 border-danger text-danger font-semibold py-2.5 px-4 rounded-lg active:opacity-75 flex-shrink-0">
+                    {cancellingId === o.id ? (
+                      <span className="w-4 h-4 border-2 border-danger border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <><XCircle size={16} /> Annuler</>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleReceive(o.id)}
+                    disabled={loadingId === o.id || cancellingId === o.id}
+                    className="flex-1 flex items-center justify-center gap-2 bg-success text-white font-semibold py-2.5 rounded-lg active:opacity-75">
+                    {loadingId === o.id ? (
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <><CheckCircle2 size={16} /> Marquer comme reçue</>
+                    )}
+                  </button>
+                </div>
               )}
             </div>
           )
