@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, Clock, Package, XCircle } from 'lucide-react'
+import { CheckCircle2, Clock, Package, XCircle, ThumbsUp } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { CATEGORY_LABELS } from '../types'
 
@@ -12,9 +12,8 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'cancelled', label: 'Annulées' },
 ]
 
-const STATUS_ORDER: Record<'pending' | 'received' | 'cancelled', number> = {
-  pending: 0, received: 1, cancelled: 2,
-}
+// Display priority: pending → accepted → received → cancelled
+const STATUS_ORDER: Record<string, number> = { pending: 0, accepted: 1, received: 2, cancelled: 3 }
 
 function formatDate(d: Date) {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -27,10 +26,14 @@ export default function OrdersPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null)
 
   const filtered = orders
-    .filter(o => filter === 'all' || o.status === filter)
+    .filter(o => {
+      if (filter === 'all') return true
+      if (filter === 'pending') return o.status === 'pending' || o.status === 'accepted'
+      return o.status === filter
+    })
     .sort((a, b) => {
-      if (a.status !== b.status) return STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
-      return b.createdAt.getTime() - a.createdAt.getTime()
+      const diff = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)
+      return diff !== 0 ? diff : b.createdAt.getTime() - a.createdAt.getTime()
     })
 
   const handleReceive = async (id: string) => {
@@ -41,7 +44,7 @@ export default function OrdersPage() {
   }
 
   const handleCancel = async (id: string) => {
-    if (!window.confirm('Annuler cette commande ? Elle sera conservée dans l\'historique.')) return
+    if (!window.confirm("Annuler cette commande ? Elle sera conservée dans l'historique.")) return
     setCancellingId(id)
     await cancelOrder(id)
     setCancellingId(null)
@@ -53,7 +56,6 @@ export default function OrdersPage() {
         <h1 className="text-xl font-bold text-gray-900">Commandes</h1>
       </div>
 
-      {/* Filter tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
         {FILTERS.map(f => (
           <button
@@ -65,25 +67,38 @@ export default function OrdersPage() {
         ))}
       </div>
 
-      {/* Orders list */}
       <div className="space-y-2">
         {filtered.map(o => {
           const totalQty = o.items.reduce((s, i) => s + i.quantity, 0)
           const isPending = o.status === 'pending'
+          const isAccepted = o.status === 'accepted'
           const isCancelled = o.status === 'cancelled'
-          const borderClass = isPending ? 'border-warning' : isCancelled ? 'border-gray-300' : 'border-success'
+          const isActive = isPending || isAccepted
+
+          const borderClass = isPending ? 'border-warning'
+            : isAccepted ? 'border-success'
+            : isCancelled ? 'border-gray-300'
+            : 'border-success'
+
           return (
             <div key={o.id} className={`card p-4 border-l-4 ${borderClass} ${isCancelled ? 'opacity-70' : ''}`}>
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className={`font-bold truncate ${isCancelled ? 'text-gray-500 line-through' : 'text-gray-900'}`}>{o.supplierName}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className={`font-bold truncate ${isCancelled ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                      {o.supplierName}
+                    </p>
                     {isPending && (
                       <span className="text-[10px] font-bold text-warning bg-warning-light px-1.5 py-0.5 rounded-md flex items-center gap-1">
                         <Clock size={10} /> EN ATTENTE
                       </span>
                     )}
-                    {!isPending && !isCancelled && (
+                    {isAccepted && (
+                      <span className="text-[10px] font-bold text-success bg-success-light px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                        <ThumbsUp size={10} /> ACCEPTÉE
+                      </span>
+                    )}
+                    {o.status === 'received' && (
                       <span className="text-[10px] font-bold text-success bg-success-light px-1.5 py-0.5 rounded-md flex items-center gap-1">
                         <CheckCircle2 size={10} /> REÇUE
                       </span>
@@ -95,8 +110,15 @@ export default function OrdersPage() {
                     )}
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">Commandée le {formatDate(o.createdAt)}</p>
-                  {o.receivedAt && <p className="text-xs text-success mt-0.5">Reçue le {formatDate(o.receivedAt)}</p>}
-                  {o.cancelledAt && <p className="text-xs text-gray-500 mt-0.5">Annulée le {formatDate(o.cancelledAt)}</p>}
+                  {isAccepted && o.acceptedAt && (
+                    <p className="text-xs text-success mt-0.5">✓ Acceptée le {formatDate(o.acceptedAt)}</p>
+                  )}
+                  {o.status === 'received' && o.receivedAt && (
+                    <p className="text-xs text-success mt-0.5">Reçue le {formatDate(o.receivedAt)}</p>
+                  )}
+                  {isCancelled && o.cancelledAt && (
+                    <p className="text-xs text-gray-500 mt-0.5">Annulée le {formatDate(o.cancelledAt)}</p>
+                  )}
                 </div>
                 <div className={`flex items-center gap-1 flex-shrink-0 ${isCancelled ? 'text-gray-400' : 'text-primary'}`}>
                   <Package size={14} />
@@ -108,35 +130,31 @@ export default function OrdersPage() {
                 {o.items.map(i => (
                   <div key={i.bottleId} className="flex items-center justify-between text-sm">
                     <div className="flex-1 min-w-0">
-                      <span className="text-gray-800 truncate">{i.bottleName}</span>
+                      <span className={isCancelled ? 'text-gray-400' : 'text-gray-800'}>{i.bottleName}</span>
                       <span className="text-xs text-gray-400 ml-1.5">· {CATEGORY_LABELS[i.category]}</span>
                     </div>
-                    <span className="font-semibold text-primary flex-shrink-0 ml-2">×{i.quantity}</span>
+                    <span className={`font-semibold flex-shrink-0 ml-2 ${isCancelled ? 'text-gray-400' : 'text-primary'}`}>×{i.quantity}</span>
                   </div>
                 ))}
               </div>
 
-              {isPending && (
+              {isActive && (
                 <div className="flex gap-2 mt-3">
                   <button
                     onClick={() => handleCancel(o.id)}
                     disabled={cancellingId === o.id || loadingId === o.id}
                     className="flex items-center justify-center gap-1.5 bg-white border-2 border-danger text-danger font-semibold py-2.5 px-4 rounded-lg active:opacity-75 flex-shrink-0">
-                    {cancellingId === o.id ? (
-                      <span className="w-4 h-4 border-2 border-danger border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <><XCircle size={16} /> Annuler</>
-                    )}
+                    {cancellingId === o.id
+                      ? <span className="w-4 h-4 border-2 border-danger border-t-transparent rounded-full animate-spin" />
+                      : <><XCircle size={16} /> Annuler</>}
                   </button>
                   <button
                     onClick={() => handleReceive(o.id)}
                     disabled={loadingId === o.id || cancellingId === o.id}
                     className="flex-1 flex items-center justify-center gap-2 bg-success text-white font-semibold py-2.5 rounded-lg active:opacity-75">
-                    {loadingId === o.id ? (
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <><CheckCircle2 size={16} /> Marquer comme reçue</>
-                    )}
+                    {loadingId === o.id
+                      ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      : <><CheckCircle2 size={16} /> Marquer comme reçue</>}
                   </button>
                 </div>
               )}

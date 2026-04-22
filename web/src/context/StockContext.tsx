@@ -64,7 +64,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
     const uorders = onSnapshot(
       query(collection(db, 'orders'), where('restaurantId', '==', user.restaurantId)),
       snap => {
-        setOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() ?? new Date(), receivedAt: d.data().receivedAt?.toDate(), cancelledAt: d.data().cancelledAt?.toDate() })) as Order[])
+        setOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() ?? new Date(), acceptedAt: d.data().acceptedAt?.toDate(), receivedAt: d.data().receivedAt?.toDate(), cancelledAt: d.data().cancelledAt?.toDate() })) as Order[])
         oLoaded = true; check()
       },
       () => { oLoaded = true; check() }
@@ -106,14 +106,35 @@ export function StockProvider({ children }: { children: ReactNode }) {
   const createOrder = async (supplierId: string, items: OrderItem[]): Promise<string> => {
     if (!user) throw new Error('Non connecté')
     const supplier = suppliers.find(s => s.id === supplierId)
+    const token = crypto.randomUUID()
+    const now = new Date()
     const ref = await addDoc(collection(db, 'orders'), {
       restaurantId: user.restaurantId,
       supplierId,
       supplierName: supplier?.name ?? '',
+      supplierEmail: supplier?.email ?? '',
+      restaurantEmail: user.email,
       items,
+      token,
       status: 'pending',
       createdAt: serverTimestamp(),
     })
+    if (supplier?.email) {
+      fetch('/api/send-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: ref.id,
+          token,
+          supplierEmail: supplier.email,
+          supplierName: supplier.name,
+          restaurantName: user.restaurantName,
+          restaurantEmail: user.email,
+          items: items.map(i => ({ bottleName: i.bottleName, category: i.category, quantity: i.quantity })),
+          createdAt: now.toISOString(),
+        }),
+      }).catch(err => console.error('send-order failed:', err))
+    }
     return ref.id
   }
 
@@ -129,7 +150,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
 
   const cancelOrder = async (orderId: string) => await updateDoc(doc(db, 'orders', orderId), { status: 'cancelled', cancelledAt: serverTimestamp() })
 
-  const getPendingOrders = () => orders.filter(o => o.status === 'pending')
+  const getPendingOrders = () => orders.filter(o => o.status === 'pending' || o.status === 'accepted')
   const getLowStock = () => bottles.filter(b => b.quantity <= b.minThreshold)
   const getTotalValue = () => bottles.reduce((s, b) => s + b.quantity * b.price, 0)
 

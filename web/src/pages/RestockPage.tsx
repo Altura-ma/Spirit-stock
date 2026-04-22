@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Phone, Mail, ShoppingCart, CheckCircle } from 'lucide-react'
+import { Phone, Mail, ShoppingCart, CheckCircle, Send } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { useAuth } from '../context/AuthContext'
 import { CATEGORY_LABELS, OrderItem } from '../types'
@@ -7,10 +7,10 @@ import { CATEGORY_LABELS, OrderItem } from '../types'
 export default function RestockPage() {
   const { user } = useAuth()
   const { bottles, suppliers, cart, clearSupplierCart, clearCart, createOrder, getLowStock } = useStock()
-  const [sent, setSent] = useState<string[]>([]) // supplier ids just ordered
+  const [sent, setSent] = useState<string[]>([])
   const [emailError, setEmailError] = useState<string | null>(null)
+  const [loading, setLoading] = useState<string | null>(null) // supplierId being sent
 
-  // Build cart sections: bottles in cart grouped by supplier
   const cartBottles = bottles.filter(b => cart[b.id] > 0)
   const cartSections = suppliers
     .map(s => ({ supplier: s, items: cartBottles.filter(b => b.supplierId === s.id) }))
@@ -22,20 +22,6 @@ export default function RestockPage() {
 
   const totalCartItems = cartBottles.length
 
-  const buildEmailBody = (items: { name: string; category: string; qty: number }[]) => {
-    const lines = [
-      `Bonjour,`,
-      ``,
-      `Voici notre commande :`,
-      ``,
-      ...items.map(i => `- ${i.name} (${i.category}) : ${i.qty} unité(s)`),
-      ``,
-      `Merci,`,
-      user?.restaurantName ?? '',
-    ]
-    return encodeURIComponent(lines.join('\n'))
-  }
-
   const handleCommander = async (supplierId: string) => {
     const section = cartSections.find(s => s.supplier.id === supplierId)
     if (!section) return
@@ -45,14 +31,12 @@ export default function RestockPage() {
       return
     }
     setEmailError(null)
-    const items = section.items.map(b => ({ name: b.name, category: CATEGORY_LABELS[b.category], qty: cart[b.id] }))
-    const subject = encodeURIComponent(`Commande - ${user?.restaurantName}`)
-    const body = buildEmailBody(items)
-    window.location.href = `mailto:${section.supplier.email}?subject=${subject}&body=${body}`
+    setLoading(supplierId)
     const orderItems: OrderItem[] = section.items.map(b => ({ bottleId: b.id, bottleName: b.name, category: b.category, quantity: cart[b.id] }))
     await createOrder(supplierId, orderItems)
     clearSupplierCart(supplierId)
     setSent(prev => [...prev, supplierId])
+    setLoading(null)
   }
 
   const handleToutCommander = async () => {
@@ -62,20 +46,17 @@ export default function RestockPage() {
       setEmailError(`Email manquant pour : ${missing.map(s => s.supplier.name).join(', ')}. Ajoutez-les dans Fournisseurs.`)
       return
     }
+    setLoading('all')
     for (const section of cartSections) {
       if (section.supplier.id === 'none' || !section.supplier.email) continue
-      const items = section.items.map(b => ({ name: b.name, category: CATEGORY_LABELS[b.category], qty: cart[b.id] }))
-      const subject = encodeURIComponent(`Commande - ${user?.restaurantName}`)
-      const body = buildEmailBody(items)
-      window.open(`mailto:${section.supplier.email}?subject=${subject}&body=${body}`)
       const orderItems: OrderItem[] = section.items.map(b => ({ bottleId: b.id, bottleName: b.name, category: b.category, quantity: cart[b.id] }))
       await createOrder(section.supplier.id, orderItems)
     }
     clearCart()
     setSent(cartSections.map(s => s.supplier.id))
+    setLoading(null)
   }
 
-  // Low stock suggestions (not in cart)
   const lowStock = getLowStock()
   const suggestions = lowStock.filter(b => !cart[b.id])
 
@@ -91,7 +72,6 @@ export default function RestockPage() {
 
   return (
     <div className="p-4 space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between pt-2">
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-bold text-gray-900">Commander</h1>
@@ -100,8 +80,13 @@ export default function RestockPage() {
           )}
         </div>
         {totalCartItems > 1 && (
-          <button onClick={handleToutCommander} className="flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-xl">
-            <ShoppingCart size={15} /> Tout commander
+          <button
+            onClick={handleToutCommander}
+            disabled={loading === 'all'}
+            className="flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-xl disabled:opacity-60">
+            {loading === 'all'
+              ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              : <><ShoppingCart size={15} /> Tout commander</>}
           </button>
         )}
       </div>
@@ -113,7 +98,6 @@ export default function RestockPage() {
         </div>
       )}
 
-      {/* Cart sections */}
       {totalCartItems > 0 ? (
         <div className="space-y-3">
           {cartSections.map(({ supplier, items }) => (
@@ -124,22 +108,25 @@ export default function RestockPage() {
                     <p className="text-white font-bold text-base">{supplier.name}</p>
                     {supplier.phone && <p className="text-white/70 text-sm">{supplier.phone}</p>}
                   </div>
-                  <div className="flex gap-2">
-                    {supplier.phone && (
-                      <a href={`tel:${supplier.phone}`} className="flex items-center gap-1.5 bg-white/20 text-white text-sm font-medium px-3 py-1.5 rounded-lg">
-                        <Phone size={14} /> Appeler
-                      </a>
-                    )}
-                  </div>
+                  {supplier.phone && (
+                    <a href={`tel:${supplier.phone}`} className="flex items-center gap-1.5 bg-white/20 text-white text-sm font-medium px-3 py-1.5 rounded-lg">
+                      <Phone size={14} /> Appeler
+                    </a>
+                  )}
                 </div>
                 {supplier.id !== 'none' && !sent.includes(supplier.id) && (
-                  <button onClick={() => handleCommander(supplier.id)} className="w-full flex items-center justify-center gap-2 bg-white text-primary font-bold py-2.5 rounded-xl text-sm">
-                    <ShoppingCart size={15} /> Commander chez {supplier.name}
+                  <button
+                    onClick={() => handleCommander(supplier.id)}
+                    disabled={loading === supplier.id}
+                    className="w-full flex items-center justify-center gap-2 bg-white text-primary font-bold py-2.5 rounded-xl text-sm disabled:opacity-60">
+                    {loading === supplier.id
+                      ? <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      : <><Send size={14} /> Commander chez {supplier.name}</>}
                   </button>
                 )}
                 {sent.includes(supplier.id) && (
                   <div className="w-full flex items-center justify-center gap-2 bg-success text-white font-bold py-2.5 rounded-xl text-sm">
-                    <CheckCircle size={15} /> Email préparé
+                    <CheckCircle size={15} /> Email envoyé au fournisseur
                   </div>
                 )}
                 {supplier.id !== 'none' && !supplier.email && !sent.includes(supplier.id) && (
@@ -171,7 +158,6 @@ export default function RestockPage() {
         </div>
       )}
 
-      {/* Low stock suggestions */}
       {suggestions.length > 0 && (
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Suggestions — stock faible</p>

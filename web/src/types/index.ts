@@ -52,9 +52,13 @@ export interface Order {
   restaurantId: string
   supplierId: string
   supplierName: string
+  supplierEmail?: string
+  restaurantEmail?: string
   items: OrderItem[]
-  status: 'pending' | 'received' | 'cancelled'
+  token?: string
+  status: 'pending' | 'accepted' | 'received' | 'cancelled'
   createdAt: Date
+  acceptedAt?: Date
   receivedAt?: Date
   cancelledAt?: Date
 }
