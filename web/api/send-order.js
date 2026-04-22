@@ -4,74 +4,144 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY ?? 're_GgbqiBwc_52mftzNhNULbns
 const RESEND_FROM = process.env.RESEND_FROM_EMAIL ?? 'Spirit Stock <onboarding@resend.dev>'
 const BASE_URL = process.env.BASE_URL ?? 'https://spirit-stock.vercel.app'
 
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
 function buildItemsRows(items) {
-  return items.map(i => `
+  return items.map((i, idx) => `
     <tr>
-      <td style="font-size: 15px; color: #333; padding: 10px 0;">
-        <strong>${escapeHtml(i.bottleName)}</strong>
-      </td>
-      <td align="right" style="font-size: 16px; font-weight: bold; color: #D35400; padding: 10px 0;">
-        x${i.quantity}
+      <td style="padding:${idx === 0 ? '0' : '8px'} 0 0;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="background:#F7F4F0;border-radius:10px;padding:14px 18px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="font-family:Arial,sans-serif;font-size:15px;font-weight:700;color:#1A1A1A;">
+                    ${escapeHtml(i.bottleName)}
+                  </td>
+                  <td align="right" style="white-space:nowrap;padding-left:12px;">
+                    <span style="display:inline-block;background:#8B4513;color:#ffffff;font-family:Arial,sans-serif;font-size:13px;font-weight:700;padding:4px 14px;border-radius:20px;">
+                      × ${i.quantity}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>`).join('')
 }
 
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
 function buildEmail({ restaurantName, items, acceptUrl, cancelUrl, date, time }) {
   return `<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="fr">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 </head>
-<body style="margin:0;padding:20px;background-color:#F9F9F9;font-family:Arial,sans-serif;">
-  <table border="0" cellpadding="0" cellspacing="0" width="100%">
-    <tr><td align="center">
-      <table border="0" cellpadding="0" cellspacing="0" width="500"
-        style="background:#fff;border-radius:12px;border-left:5px solid #E67E22;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+<body style="margin:0;padding:0;background:#F0EDE8;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
 
-        <tr><td style="padding:25px 25px 5px 25px;">
-          <span style="color:#E67E22;font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;">Nouvelle commande</span>
-          <h2 style="margin:5px 0;color:#1A1A1A;font-size:20px;">Client : ${escapeHtml(restaurantName)}</h2>
-          <p style="margin:0;color:#888;font-size:13px;">${date} • ${time}</p>
-        </td></tr>
+        <table width="540" cellpadding="0" cellspacing="0" style="max-width:540px;">
 
-        <tr><td style="padding:20px 25px;">
-          <table border="0" cellpadding="0" cellspacing="0" width="100%"
-            style="border-top:1px solid #F0F0F0;border-bottom:1px solid #F0F0F0;">
-            ${buildItemsRows(items)}
-          </table>
-        </td></tr>
+          <!-- Logo / brand row -->
+          <tr>
+            <td align="center" style="padding-bottom:20px;">
+              <span style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:#8B4513;letter-spacing:2px;text-transform:uppercase;">Spirit Stock</span>
+            </td>
+          </tr>
 
-        <tr><td style="padding:10px 25px 30px 25px;">
-          <table border="0" cellpadding="0" cellspacing="0" width="100%">
-            <tr>
-              <td width="48%">
-                <a href="${acceptUrl}"
-                  style="background:#2E7D32;color:#fff;padding:12px;display:block;text-decoration:none;border-radius:6px;text-align:center;font-weight:bold;font-size:14px;">
-                  ✓ Accepter
-                </a>
-              </td>
-              <td width="4%"></td>
-              <td width="48%">
-                <a href="${cancelUrl}"
-                  style="background:#fff;color:#666;border:1px solid #DDD;padding:12px;display:block;text-decoration:none;border-radius:6px;text-align:center;font-weight:bold;font-size:14px;">
-                  Refuser
-                </a>
-              </td>
-            </tr>
-          </table>
-        </td></tr>
+          <!-- Card -->
+          <tr>
+            <td style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.10);">
 
-      </table>
-    </td></tr>
+              <!-- Orange top bar -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td style="background:#E67E22;height:6px;border-radius:20px 20px 0 0;font-size:0;line-height:0;">&nbsp;</td></tr>
+              </table>
+
+              <!-- Header -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:32px 36px 24px;">
+                    <p style="margin:0 0 6px;font-family:Arial,sans-serif;font-size:11px;font-weight:700;color:#E67E22;text-transform:uppercase;letter-spacing:2px;">Nouvelle commande</p>
+                    <h1 style="margin:0 0 6px;font-family:Arial,sans-serif;font-size:26px;font-weight:800;color:#1A1A1A;line-height:1.2;">
+                      ${escapeHtml(restaurantName)}
+                    </h1>
+                    <p style="margin:0;font-family:Arial,sans-serif;font-size:13px;color:#999;">
+                      ${date} &nbsp;·&nbsp; ${time}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Divider -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td style="padding:0 36px;"><div style="height:1px;background:#F0EDE8;font-size:0;line-height:0;">&nbsp;</div></td></tr>
+              </table>
+
+              <!-- Items -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:24px 36px;">
+                    <p style="margin:0 0 14px;font-family:Arial,sans-serif;font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:1.5px;">Articles</p>
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      ${buildItemsRows(items)}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Divider -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td style="padding:0 36px;"><div style="height:1px;background:#F0EDE8;font-size:0;line-height:0;">&nbsp;</div></td></tr>
+              </table>
+
+              <!-- Buttons -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:28px 36px 36px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td width="48%">
+                          <a href="${acceptUrl}"
+                            style="display:block;background:#2E7D32;color:#ffffff;text-decoration:none;text-align:center;padding:16px 12px;border-radius:12px;font-family:Arial,sans-serif;font-size:15px;font-weight:700;">
+                            ✓&nbsp; Accepter
+                          </a>
+                        </td>
+                        <td width="4%"></td>
+                        <td width="48%">
+                          <a href="${cancelUrl}"
+                            style="display:block;background:#ffffff;color:#555555;text-decoration:none;text-align:center;padding:14px 12px;border-radius:12px;font-family:Arial,sans-serif;font-size:15px;font-weight:700;border:2px solid #E0E0E0;">
+                            Refuser
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding-top:20px;">
+              <p style="margin:0;font-family:Arial,sans-serif;font-size:12px;color:#BBB;">
+                Ce message a été envoyé automatiquement via Spirit Stock.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
   </table>
 </body>
 </html>`
@@ -89,7 +159,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid JSON' })
   }
 
-  const { orderId, token, supplierEmail, supplierName, restaurantName, items, createdAt } = body
+  const { orderId, token, supplierEmail, restaurantName, items, createdAt } = body
 
   if (!orderId || !token || !supplierEmail || !items?.length) {
     return res.status(400).json({ error: 'Missing required fields' })
