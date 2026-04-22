@@ -33,6 +33,7 @@ export default function OrdersPage() {
       return o.status === filter
     })
     .sort((a, b) => {
+      if (filter === 'all') return b.createdAt.getTime() - a.createdAt.getTime()
       const diff = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)
       return diff !== 0 ? diff : b.createdAt.getTime() - a.createdAt.getTime()
     })
