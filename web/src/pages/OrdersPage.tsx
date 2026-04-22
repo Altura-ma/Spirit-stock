@@ -163,7 +163,7 @@ export default function OrdersPage() {
                   <button
                     onClick={() => handleReceive(o.id)}
                     disabled={loadingId === o.id || cancellingId === o.id}
-                    className="flex-1 flex items-center justify-center gap-2 bg-success text-white font-semibold py-2.5 rounded-lg active:opacity-75">
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-success text-white text-sm font-semibold py-2.5 rounded-lg active:opacity-75 whitespace-nowrap">
                     {loadingId === o.id
                       ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       : <><CheckCircle2 size={16} /> Marquer comme reçue</>}

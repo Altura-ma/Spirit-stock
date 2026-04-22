@@ -36,7 +36,7 @@ export default function Layout() {
             >
               <div className="relative">
                 <Icon size={22} />
-                {badge && badge > 0 && (
+                {badge != null && badge > 0 && (
                   <span className="absolute -top-1.5 -right-2 bg-danger text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
                     {badge}
                   </span>
