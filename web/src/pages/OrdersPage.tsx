@@ -13,7 +13,7 @@ const FILTERS: { value: Filter; label: string }[] = [
 ]
 
 // Display priority: pending → accepted → received → cancelled
-const STATUS_ORDER: Record<string, number> = { pending: 0, accepted: 1, received: 2, cancelled: 3 }
+const STATUS_ORDER: Record<string, number> = { pending: 0, accepted: 1, received: 2, refused: 3, cancelled: 4 }
 
 function formatDate(d: Date) {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -29,6 +29,7 @@ export default function OrdersPage() {
     .filter(o => {
       if (filter === 'all') return true
       if (filter === 'pending') return o.status === 'pending' || o.status === 'accepted'
+      if (filter === 'cancelled') return o.status === 'cancelled' || o.status === 'refused'
       return o.status === filter
     })
     .sort((a, b) => {
@@ -73,19 +74,21 @@ export default function OrdersPage() {
           const isPending = o.status === 'pending'
           const isAccepted = o.status === 'accepted'
           const isCancelled = o.status === 'cancelled'
+          const isRefused = o.status === 'refused'
           const isActive = isPending || isAccepted
 
           const borderClass = isPending ? 'border-warning'
             : isAccepted ? 'border-success'
+            : isRefused ? 'border-danger'
             : isCancelled ? 'border-gray-300'
             : 'border-success'
 
           return (
-            <div key={o.id} className={`card p-4 border-l-4 ${borderClass} ${isCancelled ? 'opacity-70' : ''}`}>
+            <div key={o.id} className={`card p-4 border-l-4 ${borderClass} ${isCancelled || isRefused ? 'opacity-70' : ''}`}>
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className={`font-bold truncate ${isCancelled ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                    <p className={`font-bold truncate ${isCancelled || isRefused ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
                       {o.supplierName}
                     </p>
                     {isPending && (
@@ -103,6 +106,11 @@ export default function OrdersPage() {
                         <CheckCircle2 size={10} /> REÇUE
                       </span>
                     )}
+                    {isRefused && (
+                      <span className="text-[10px] font-bold text-danger bg-danger-light px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                        <XCircle size={10} /> REFUSÉE
+                      </span>
+                    )}
                     {isCancelled && (
                       <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-md flex items-center gap-1">
                         <XCircle size={10} /> ANNULÉE
@@ -116,11 +124,14 @@ export default function OrdersPage() {
                   {o.status === 'received' && o.receivedAt && (
                     <p className="text-xs text-success mt-0.5">Reçue le {formatDate(o.receivedAt)}</p>
                   )}
+                  {isRefused && o.cancelledAt && (
+                    <p className="text-xs text-danger mt-0.5">Refusée le {formatDate(o.cancelledAt)}</p>
+                  )}
                   {isCancelled && o.cancelledAt && (
                     <p className="text-xs text-gray-500 mt-0.5">Annulée le {formatDate(o.cancelledAt)}</p>
                   )}
                 </div>
-                <div className={`flex items-center gap-1 flex-shrink-0 ${isCancelled ? 'text-gray-400' : 'text-primary'}`}>
+                <div className={`flex items-center gap-1 flex-shrink-0 ${isCancelled || isRefused ? 'text-gray-400' : 'text-primary'}`}>
                   <Package size={14} />
                   <span className="text-sm font-bold">{totalQty}</span>
                 </div>
@@ -133,7 +144,7 @@ export default function OrdersPage() {
                       <span className={isCancelled ? 'text-gray-400' : 'text-gray-800'}>{i.bottleName}</span>
                       <span className="text-xs text-gray-400 ml-1.5">· {CATEGORY_LABELS[i.category]}</span>
                     </div>
-                    <span className={`font-semibold flex-shrink-0 ml-2 ${isCancelled ? 'text-gray-400' : 'text-primary'}`}>×{i.quantity}</span>
+                    <span className={`font-semibold flex-shrink-0 ml-2 ${isCancelled || isRefused ? 'text-gray-400' : 'text-primary'}`}>×{i.quantity}</span>
                   </div>
                 ))}
               </div>

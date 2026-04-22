@@ -48,7 +48,7 @@ service cloud.firestore {
       allow update: if !isAuthenticated()
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['status', 'acceptedAt', 'cancelledAt'])
-        && request.resource.data.status in ['accepted', 'cancelled'];
+        && request.resource.data.status in ['accepted', 'cancelled', 'refused'];
     }
   }
 }

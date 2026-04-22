@@ -56,7 +56,7 @@ export interface Order {
   restaurantEmail?: string
   items: OrderItem[]
   token?: string
-  status: 'pending' | 'accepted' | 'received' | 'cancelled'
+  status: 'pending' | 'accepted' | 'received' | 'cancelled' | 'refused'
   createdAt: Date
   acceptedAt?: Date
   receivedAt?: Date

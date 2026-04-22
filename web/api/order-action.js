@@ -143,7 +143,8 @@ export default async function handler(req, res) {
   // Idempotency — already processed
   if (order.status !== 'pending') {
     const msg = order.status === 'accepted' ? 'déjà acceptée'
-      : order.status === 'cancelled' ? 'déjà refusée'
+      : order.status === 'refused' ? 'déjà refusée'
+      : order.status === 'cancelled' ? 'déjà annulée'
       : 'déjà traitée'
     return html(200, page('ℹ️', `Commande ${msg}`, 'Cette commande a déjà été traitée.'))
   }
@@ -165,8 +166,8 @@ export default async function handler(req, res) {
     return html(200, page('✅', 'Commande acceptée !', 'Le restaurant a été notifié. Merci !', '#2E7D32'))
   }
 
-  // action === 'cancel'
-  const ok = await patchOrder(orderId, { status: 'cancelled', cancelledAt: now }, ['status', 'cancelledAt'])
+  // action === 'cancel' (supplier refuses)
+  const ok = await patchOrder(orderId, { status: 'refused', cancelledAt: now }, ['status', 'cancelledAt'])
   if (!ok) return html(500, page('⚠️', 'Erreur', 'Impossible de mettre à jour la commande.', '#E53935'))
 
   if (order.restaurantEmail) {
