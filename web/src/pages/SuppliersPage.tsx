@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Phone, Pencil, Trash2, Plus, X, Mail } from 'lucide-react'
+import { Phone, Pencil, Trash2, Plus, X, Mail, BadgeCheck } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { Supplier } from '../types'
 
@@ -42,9 +42,52 @@ function SupplierModal({ supplier, onClose, onSave }: { supplier: Supplier | nul
   )
 }
 
+function SupplierCard({ s, bottleCount, onEdit, onDelete }: { s: Supplier; bottleCount: number; onEdit: () => void; onDelete: () => void }) {
+  return (
+    <div className={`card p-4 flex items-center gap-3 ${s.isGlobal ? 'border border-primary/20' : ''}`}>
+      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 ${s.isGlobal ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}`}>
+        {s.name.charAt(0).toUpperCase()}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <p className="font-bold text-gray-900 truncate">{s.name}</p>
+          {s.isGlobal && (
+            <span className="flex items-center gap-0.5 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full flex-shrink-0">
+              <BadgeCheck size={10} /> Référencé
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-gray-400 truncate">{s.phone || 'Aucun numéro'}</p>
+        {s.email ? (
+          <p className="text-xs text-gray-400 truncate flex items-center gap-1 mt-0.5"><Mail size={10} />{s.email}</p>
+        ) : (
+          <p className="text-xs text-warning flex items-center gap-1 mt-0.5"><Mail size={10} />Aucun email</p>
+        )}
+        <p className="text-xs text-primary mt-0.5">{bottleCount} produit(s) lié(s)</p>
+      </div>
+      <div className="flex items-center gap-1 flex-shrink-0">
+        {s.phone && (
+          <a href={`tel:${s.phone}`} className="w-9 h-9 bg-success rounded-full flex items-center justify-center text-white">
+            <Phone size={16} />
+          </a>
+        )}
+        {!s.isGlobal && (
+          <>
+            <button onClick={onEdit} className="p-2 text-primary"><Pencil size={16} /></button>
+            <button onClick={onDelete} className="p-2 text-danger"><Trash2 size={16} /></button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function SuppliersPage() {
   const { suppliers, bottles, addSupplier, updateSupplier, deleteSupplier } = useStock()
   const [modal, setModal] = useState<{ open: boolean; supplier: Supplier | null }>({ open: false, supplier: null })
+
+  const globalSuppliers = suppliers.filter(s => s.isGlobal)
+  const mySuppliers = suppliers.filter(s => !s.isGlobal)
 
   const handleSave = async (name: string, phone: string, email: string) => {
     if (modal.supplier) await updateSupplier(modal.supplier.id, { name, phone, email })
@@ -56,7 +99,7 @@ export default function SuppliersPage() {
   }
 
   return (
-    <div className="p-4 space-y-3">
+    <div className="p-4 space-y-4">
       <div className="flex items-center justify-between pt-2">
         <h1 className="text-xl font-bold text-gray-900">Fournisseurs</h1>
         <button onClick={() => setModal({ open: true, supplier: null })} className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white">
@@ -64,37 +107,36 @@ export default function SuppliersPage() {
         </button>
       </div>
 
+      {/* Platform suppliers */}
+      {globalSuppliers.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-primary uppercase tracking-wide flex items-center gap-1">
+            <BadgeCheck size={12} /> Fournisseurs référencés
+          </p>
+          {globalSuppliers.map(s => (
+            <SupplierCard key={s.id} s={s} bottleCount={bottles.filter(b => b.supplierId === s.id).length} onEdit={() => setModal({ open: true, supplier: s })} onDelete={() => handleDelete(s)} />
+          ))}
+        </div>
+      )}
+
+      {/* My suppliers */}
       <div className="space-y-2">
-        {suppliers.map(s => (
-          <div key={s.id} className="card p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold flex-shrink-0">
-              {s.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-900 truncate">{s.name}</p>
-              <p className="text-sm text-gray-400 truncate">{s.phone || 'Aucun numéro'}</p>
-              {s.email ? (
-                <p className="text-xs text-gray-400 truncate flex items-center gap-1 mt-0.5"><Mail size={10} />{s.email}</p>
-              ) : (
-                <p className="text-xs text-warning flex items-center gap-1 mt-0.5"><Mail size={10} />Aucun email</p>
-              )}
-              <p className="text-xs text-primary mt-0.5">{bottles.filter(b => b.supplierId === s.id).length} produit(s)</p>
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {s.phone && (
-                <a href={`tel:${s.phone}`} className="w-9 h-9 bg-success rounded-full flex items-center justify-center text-white">
-                  <Phone size={16} />
-                </a>
-              )}
-              <button onClick={() => setModal({ open: true, supplier: s })} className="p-2 text-primary"><Pencil size={16} /></button>
-              <button onClick={() => handleDelete(s)} className="p-2 text-danger"><Trash2 size={16} /></button>
-            </div>
-          </div>
+        {mySuppliers.length > 0 && (
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Mes fournisseurs</p>
+        )}
+        {mySuppliers.map(s => (
+          <SupplierCard key={s.id} s={s} bottleCount={bottles.filter(b => b.supplierId === s.id).length} onEdit={() => setModal({ open: true, supplier: s })} onDelete={() => handleDelete(s)} />
         ))}
-        {suppliers.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            <p>Aucun fournisseur</p>
-            <p className="text-xs mt-1">Louis Mathieu est ajouté automatiquement à l'inscription</p>
+        {mySuppliers.length === 0 && globalSuppliers.length === 0 && (
+          <div className="text-center py-10 text-gray-400">
+            <p className="font-medium">Aucun fournisseur</p>
+            <p className="text-xs mt-1">Ajoutez vos propres fournisseurs avec le bouton +</p>
+          </div>
+        )}
+        {mySuppliers.length === 0 && globalSuppliers.length > 0 && (
+          <div className="text-center py-6 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
+            <p className="text-sm">Aucun fournisseur privé</p>
+            <p className="text-xs mt-1">Ajoutez vos propres fournisseurs avec le +</p>
           </div>
         )}
       </div>

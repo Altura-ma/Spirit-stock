@@ -28,10 +28,15 @@ service cloud.firestore {
     }
 
     match /suppliers/{supplierId} {
-      allow read, update, delete: if isAuthenticated() &&
-        myRestaurantId() == resource.data.restaurantId;
+      allow read: if isAuthenticated() && (
+        resource.data.isGlobal == true ||
+        myRestaurantId() == resource.data.restaurantId
+      );
       allow create: if isAuthenticated() &&
         myRestaurantId() == request.resource.data.restaurantId;
+      allow update, delete: if isAuthenticated() &&
+        myRestaurantId() == resource.data.restaurantId &&
+        resource.data.isGlobal != true;
     }
 
     match /orders/{orderId} {

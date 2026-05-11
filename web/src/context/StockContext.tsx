@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
 import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { Bottle, Supplier, Order, OrderItem, Movement } from '../types'
@@ -47,11 +47,20 @@ export function StockProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [cart, setCart] = useState<Cart>({})
 
+  // Ref to merge restaurant + platform suppliers without stale state
+  const suppliersRef = useRef<{ restaurant: Supplier[]; platform: Supplier[] }>({ restaurant: [], platform: [] })
+
   useEffect(() => {
-    if (!user) { setBottles([]); setSuppliers([]); setOrders([]); setMovements([]); setLoading(false); return }
+    if (!user) {
+      setBottles([]); setSuppliers([]); setOrders([]); setMovements([])
+      suppliersRef.current = { restaurant: [], platform: [] }
+      setLoading(false); return
+    }
     setLoading(true); setError(null)
-    let bLoaded = false, sLoaded = false, oLoaded = false, mLoaded = false
-    const check = () => { if (bLoaded && sLoaded && oLoaded && mLoaded) setLoading(false) }
+    let bLoaded = false, sLoaded = false, oLoaded = false, mLoaded = false, gsLoaded = false
+    const check = () => { if (bLoaded && sLoaded && oLoaded && mLoaded && gsLoaded) setLoading(false) }
+
+    const merge = () => setSuppliers([...suppliersRef.current.platform, ...suppliersRef.current.restaurant])
 
     const ubottles = onSnapshot(
       query(collection(db, 'bottles'), where('restaurantId', '==', user.restaurantId)),
@@ -60,8 +69,13 @@ export function StockProvider({ children }: { children: ReactNode }) {
     )
     const usuppliers = onSnapshot(
       query(collection(db, 'suppliers'), where('restaurantId', '==', user.restaurantId)),
-      snap => { setSuppliers(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Supplier[]); sLoaded = true; check() },
+      snap => { suppliersRef.current.restaurant = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Supplier[]; merge(); sLoaded = true; check() },
       () => { sLoaded = true; check() }
+    )
+    const uglobal = onSnapshot(
+      query(collection(db, 'suppliers'), where('isGlobal', '==', true)),
+      snap => { suppliersRef.current.platform = snap.docs.map(d => ({ id: d.id, ...d.data(), isGlobal: true })) as Supplier[]; merge(); gsLoaded = true; check() },
+      () => { gsLoaded = true; check() }
     )
     const uorders = onSnapshot(
       query(collection(db, 'orders'), where('restaurantId', '==', user.restaurantId)),
@@ -73,13 +87,10 @@ export function StockProvider({ children }: { children: ReactNode }) {
     )
     const umovements = onSnapshot(
       query(collection(db, 'movements'), where('restaurantId', '==', user.restaurantId)),
-      snap => {
-        setMovements(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() ?? new Date() })) as Movement[])
-        mLoaded = true; check()
-      },
+      snap => { setMovements(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() ?? new Date() })) as Movement[]); mLoaded = true; check() },
       () => { mLoaded = true; check() }
     )
-    return () => { ubottles(); usuppliers(); uorders(); umovements() }
+    return () => { ubottles(); usuppliers(); uglobal(); uorders(); umovements() }
   }, [user])
 
   const addMovement = async (data: Omit<Movement, 'id' | 'restaurantId' | 'createdAt'>) => {
@@ -100,11 +111,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
     await updateDoc(doc(db, 'bottles', id), { ...data, updatedAt: serverTimestamp() })
     if (data.quantity !== undefined && bottle && data.quantity !== bottle.quantity) {
       const diff = data.quantity - bottle.quantity
-      addMovement({
-        bottleId: id, bottleName: data.name ?? bottle.name, category: data.category ?? bottle.category,
-        type: diff > 0 ? 'adjustment_add' : 'adjustment_remove',
-        quantity: Math.abs(diff), previousQuantity: bottle.quantity, newQuantity: data.quantity,
-      }).catch(console.error)
+      addMovement({ bottleId: id, bottleName: data.name ?? bottle.name, category: data.category ?? bottle.category, type: diff > 0 ? 'adjustment_add' : 'adjustment_remove', quantity: Math.abs(diff), previousQuantity: bottle.quantity, newQuantity: data.quantity }).catch(console.error)
     }
   }
 
@@ -144,30 +151,14 @@ export function StockProvider({ children }: { children: ReactNode }) {
     const token = crypto.randomUUID()
     const now = new Date()
     const ref = await addDoc(collection(db, 'orders'), {
-      restaurantId: user.restaurantId,
-      supplierId,
-      supplierName: supplier?.name ?? '',
-      supplierEmail: supplier?.email ?? '',
-      restaurantEmail: user.email,
-      items,
-      token,
-      status: 'pending',
-      createdAt: serverTimestamp(),
+      restaurantId: user.restaurantId, supplierId,
+      supplierName: supplier?.name ?? '', supplierEmail: supplier?.email ?? '',
+      restaurantEmail: user.email, items, token, status: 'pending', createdAt: serverTimestamp(),
     })
     if (supplier?.email) {
       fetch('/api/send-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: ref.id,
-          token,
-          supplierEmail: supplier.email,
-          supplierName: supplier.name,
-          restaurantName: user.restaurantName,
-          restaurantEmail: user.email,
-          items: items.map(i => ({ bottleName: i.bottleName, category: i.category, quantity: i.quantity })),
-          createdAt: now.toISOString(),
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: ref.id, token, supplierEmail: supplier.email, supplierName: supplier.name, restaurantName: user.restaurantName, restaurantEmail: user.email, items: items.map(i => ({ bottleName: i.bottleName, category: i.category, quantity: i.quantity })), createdAt: now.toISOString() }),
       }).catch(err => console.error('send-order failed:', err))
     }
     return ref.id
@@ -188,7 +179,6 @@ export function StockProvider({ children }: { children: ReactNode }) {
   }
 
   const cancelOrder = async (orderId: string) => await updateDoc(doc(db, 'orders', orderId), { status: 'cancelled', cancelledAt: serverTimestamp() })
-
   const getPendingOrders = () => orders.filter(o => o.status === 'pending' || o.status === 'accepted')
   const getLowStock = () => bottles.filter(b => b.quantity <= b.minThreshold)
   const getTotalValue = () => bottles.reduce((s, b) => s + b.quantity * b.price, 0)

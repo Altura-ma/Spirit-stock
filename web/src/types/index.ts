@@ -31,6 +31,7 @@ export interface Supplier {
   phone: string
   email: string
   restaurantId: string
+  isGlobal?: boolean
 }
 
 export interface AppUser {
