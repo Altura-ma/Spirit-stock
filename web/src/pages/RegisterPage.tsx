@@ -23,27 +23,31 @@ export default function RegisterPage() {
       await signUp(email.trim().toLowerCase(), password, restaurantName.trim())
       navigate('/')
     } catch (err: any) {
-      setError(err.code === 'auth/email-already-in-use' ? 'Email déjà utilisé.' : 'Erreur lors de la création du compte.')
+      setError(err.code === 'auth/email-already-in-use' ? 'Cet email est déjà utilisé.' : 'Erreur lors de la création du compte.')
     } finally { setLoading(false) }
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <Link to="/login" className="flex items-center gap-2 text-primary font-medium mb-6">
-          <ArrowLeft size={18} /> Retour
-        </Link>
+    <div className="min-h-screen bg-background flex flex-col p-6">
+      <Link to="/login" className="flex items-center gap-1.5 text-primary font-medium mb-8 self-start">
+        <ArrowLeft size={18} /> Retour
+      </Link>
 
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-primary rounded-2xl mb-3">
-            <Wine size={28} className="text-accent" />
+      <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl mb-4 shadow-md">
+            <Wine size={30} className="text-accent" />
           </div>
           <h1 className="text-2xl font-bold text-primary">Créer un compte</h1>
-          <p className="text-gray-500 text-sm mt-1">1 compte par établissement · 20€/mois</p>
+          <p className="text-gray-400 text-sm mt-1">1 compte par établissement · 20€/mois</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="card p-6 space-y-4">
-          {error && <div className="bg-danger-light text-danger text-sm p-3 rounded-xl">{error}</div>}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="bg-danger-light text-danger text-sm p-3 rounded-xl text-center font-medium">
+              {error}
+            </div>
+          )}
 
           <div>
             <label className="label">Nom de l'établissement</label>
@@ -58,13 +62,18 @@ export default function RegisterPage() {
             <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min. 6 caractères" required />
           </div>
           <div>
-            <label className="label">Confirmer</label>
+            <label className="label">Confirmer le mot de passe</label>
             <input className="input" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••" required />
           </div>
 
           <button type="submit" disabled={loading} className="btn-primary mt-2">
             {loading ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Créer mon compte'}
           </button>
+
+          <p className="text-center text-sm text-gray-400 pt-2">
+            Déjà un compte ?{' '}
+            <Link to="/login" className="text-primary font-semibold">Se connecter</Link>
+          </p>
         </form>
       </div>
     </div>

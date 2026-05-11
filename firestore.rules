@@ -16,7 +16,8 @@ service cloud.firestore {
 
     match /restaurants/{restaurantId} {
       allow read: if isAuthenticated() && myRestaurantId() == restaurantId;
-      allow write: if isAuthenticated() && myRestaurantId() == restaurantId;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && myRestaurantId() == restaurantId;
     }
 
     match /bottles/{bottleId} {
