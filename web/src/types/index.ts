@@ -39,6 +39,8 @@ export interface AppUser {
   email: string
   restaurantId: string
   restaurantName: string
+  role?: 'restaurant' | 'supplier'
+  supplierId?: string
 }
 
 export interface OrderItem {
@@ -57,6 +59,7 @@ export interface Order {
   restaurantEmail?: string
   items: OrderItem[]
   token?: string
+  restaurantName?: string
   status: 'pending' | 'accepted' | 'received' | 'cancelled' | 'refused'
   createdAt: Date
   acceptedAt?: Date

@@ -1,11 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { StockProvider } from './context/StockContext'
-import ProtectedRoute from './components/ProtectedRoute'
+import ProtectedRoute, { ProtectedSupplierRoute } from './components/ProtectedRoute'
 import Layout from './components/Layout'
+import SupplierLayout from './components/SupplierLayout'
 
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import RegisterSupplierPage from './pages/RegisterSupplierPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import DashboardPage from './pages/DashboardPage'
 import InventoryPage from './pages/InventoryPage'
@@ -16,6 +18,8 @@ import OrdersPage from './pages/OrdersPage'
 import SuppliersPage from './pages/SuppliersPage'
 import ProfilePage from './pages/ProfilePage'
 import MovementsPage from './pages/MovementsPage'
+import SupplierOrdersPage from './pages/SupplierOrdersPage'
+import SupplierProfilePage from './pages/SupplierProfilePage'
 
 export default function App() {
   return (
@@ -25,9 +29,20 @@ export default function App() {
           {/* Public */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/register-fournisseur" element={<RegisterSupplierPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-          {/* Protected */}
+          {/* Supplier interface */}
+          <Route path="/supplier" element={
+            <ProtectedSupplierRoute>
+              <SupplierLayout />
+            </ProtectedSupplierRoute>
+          }>
+            <Route index element={<SupplierOrdersPage />} />
+            <Route path="profile" element={<SupplierProfilePage />} />
+          </Route>
+
+          {/* Restaurant interface */}
           <Route path="/" element={
             <ProtectedRoute>
               <StockProvider>

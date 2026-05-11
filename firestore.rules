@@ -10,6 +10,10 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.restaurantId;
     }
 
+    function mySupplierId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.supplierId;
+    }
+
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -33,24 +37,35 @@ service cloud.firestore {
         myRestaurantId() == resource.data.restaurantId
       );
       allow create: if isAuthenticated() &&
-        myRestaurantId() == request.resource.data.restaurantId;
-      allow update, delete: if isAuthenticated() &&
+        (myRestaurantId() == request.resource.data.restaurantId ||
+         request.resource.data.isGlobal == true);
+      allow update: if isAuthenticated() && (
+        (myRestaurantId() == resource.data.restaurantId && resource.data.isGlobal != true) ||
+        mySupplierId() == supplierId
+      );
+      allow delete: if isAuthenticated() &&
         myRestaurantId() == resource.data.restaurantId &&
         resource.data.isGlobal != true;
     }
 
     match /orders/{orderId} {
-      // Authenticated restaurant users
+      // Restaurant: full access to own orders
       allow read, update, delete: if isAuthenticated() &&
         myRestaurantId() == resource.data.restaurantId;
       allow create: if isAuthenticated() &&
         myRestaurantId() == request.resource.data.restaurantId;
 
+      // Supplier: read their orders + accept/refuse
+      allow read: if isAuthenticated() && mySupplierId() == resource.data.supplierId;
+      allow update: if isAuthenticated() && mySupplierId() == resource.data.supplierId
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'acceptedAt', 'cancelledAt'])
+        && request.resource.data.status in ['accepted', 'refused'];
+
       // Unauthenticated reads — for the serverless order-action function
       allow read: if !isAuthenticated();
 
       // Unauthenticated status updates — for supplier accept/cancel via email link
-      // Only status + date fields can change, and only to accepted/cancelled
       allow update: if !isAuthenticated()
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['status', 'acceptedAt', 'cancelledAt'])

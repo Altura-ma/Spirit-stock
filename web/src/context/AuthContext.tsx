@@ -12,11 +12,23 @@ interface AuthContextType {
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, restaurantName: string) => Promise<void>
+  signUpSupplier: (email: string, password: string, name: string, phone: string) => Promise<void>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
+
+function parseUser(uid: string, email: string, d: Record<string, any>): AppUser {
+  return {
+    uid,
+    email,
+    restaurantId: d.restaurantId ?? '',
+    restaurantName: d.restaurantName ?? d.name ?? '',
+    role: d.role ?? 'restaurant',
+    supplierId: d.supplierId,
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null)
@@ -30,8 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (firebaseUser) {
             const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
             if (snap.exists()) {
-              const d = snap.data()
-              setUser({ uid: firebaseUser.uid, email: firebaseUser.email ?? '', restaurantId: d.restaurantId, restaurantName: d.restaurantName })
+              setUser(parseUser(firebaseUser.uid, firebaseUser.email ?? '', snap.data()))
             } else setUser(null)
           } else setUser(null)
         } catch { setUser(null) }
@@ -48,8 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const cred = await signInWithEmailAndPassword(auth, email, password)
     const snap = await getDoc(doc(db, 'users', cred.user.uid))
     if (snap.exists()) {
-      const d = snap.data()
-      setUser({ uid: cred.user.uid, email: cred.user.email ?? '', restaurantId: d.restaurantId, restaurantName: d.restaurantName })
+      setUser(parseUser(cred.user.uid, cred.user.email ?? '', snap.data()))
     } else {
       await firebaseSignOut(auth)
       throw Object.assign(new Error(), { code: 'app/incomplete-account' })
@@ -60,8 +70,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     try {
       const restRef = await addDoc(collection(db, 'restaurants'), { name: restaurantName, ownerId: cred.user.uid, createdAt: serverTimestamp() })
-      await setDoc(doc(db, 'users', cred.user.uid), { email, restaurantId: restRef.id, restaurantName, createdAt: serverTimestamp() })
-      setUser({ uid: cred.user.uid, email, restaurantId: restRef.id, restaurantName })
+      await setDoc(doc(db, 'users', cred.user.uid), { email, restaurantId: restRef.id, restaurantName, role: 'restaurant', createdAt: serverTimestamp() })
+      setUser({ uid: cred.user.uid, email, restaurantId: restRef.id, restaurantName, role: 'restaurant' })
+    } catch (err) {
+      await cred.user.delete()
+      throw err
+    }
+  }
+
+  const signUpSupplier = async (email: string, password: string, name: string, phone: string) => {
+    const cred = await createUserWithEmailAndPassword(auth, email, password)
+    try {
+      const supplierRef = await addDoc(collection(db, 'suppliers'), {
+        name, phone, email, restaurantId: '', isGlobal: true, createdAt: serverTimestamp(),
+      })
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        email, role: 'supplier', supplierId: supplierRef.id, name, createdAt: serverTimestamp(),
+      })
+      setUser({ uid: cred.user.uid, email, restaurantId: '', restaurantName: name, role: 'supplier', supplierId: supplierRef.id })
     } catch (err) {
       await cred.user.delete()
       throw err
@@ -71,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => { await firebaseSignOut(auth); setUser(null) }
   const resetPassword = (email: string) => sendPasswordResetEmail(auth, email)
 
-  return <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, resetPassword }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, loading, signIn, signUp, signUpSupplier, signOut, resetPassword }}>{children}</AuthContext.Provider>
 }
 
 export const useAuth = () => {

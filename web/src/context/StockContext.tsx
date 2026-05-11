@@ -153,7 +153,8 @@ export function StockProvider({ children }: { children: ReactNode }) {
     const ref = await addDoc(collection(db, 'orders'), {
       restaurantId: user.restaurantId, supplierId,
       supplierName: supplier?.name ?? '', supplierEmail: supplier?.email ?? '',
-      restaurantEmail: user.email, items, token, status: 'pending', createdAt: serverTimestamp(),
+      restaurantName: user.restaurantName, restaurantEmail: user.email,
+      items, token, status: 'pending', createdAt: serverTimestamp(),
     })
     if (supplier?.email) {
       fetch('/api/send-order', {
