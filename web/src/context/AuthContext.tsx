@@ -50,14 +50,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (snap.exists()) {
       const d = snap.data()
       setUser({ uid: cred.user.uid, email: cred.user.email ?? '', restaurantId: d.restaurantId, restaurantName: d.restaurantName })
+    } else {
+      await firebaseSignOut(auth)
+      throw Object.assign(new Error(), { code: 'app/incomplete-account' })
     }
   }
 
   const signUp = async (email: string, password: string, restaurantName: string) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
-    const restRef = await addDoc(collection(db, 'restaurants'), { name: restaurantName, ownerId: cred.user.uid, createdAt: serverTimestamp() })
-    await setDoc(doc(db, 'users', cred.user.uid), { email, restaurantId: restRef.id, restaurantName, createdAt: serverTimestamp() })
-    setUser({ uid: cred.user.uid, email, restaurantId: restRef.id, restaurantName })
+    try {
+      const restRef = await addDoc(collection(db, 'restaurants'), { name: restaurantName, ownerId: cred.user.uid, createdAt: serverTimestamp() })
+      await setDoc(doc(db, 'users', cred.user.uid), { email, restaurantId: restRef.id, restaurantName, createdAt: serverTimestamp() })
+      setUser({ uid: cred.user.uid, email, restaurantId: restRef.id, restaurantName })
+    } catch (err) {
+      await cred.user.delete()
+      throw err
+    }
   }
 
   const signOut = async () => { await firebaseSignOut(auth); setUser(null) }

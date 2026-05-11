@@ -19,8 +19,12 @@ export default function LoginPage() {
     try {
       await signIn(email.trim().toLowerCase(), password)
       navigate('/')
-    } catch {
-      setError('Email ou mot de passe incorrect.')
+    } catch (err: any) {
+      if (err.code === 'app/incomplete-account') {
+        setError('Compte incomplet. Veuillez créer un nouveau compte avec cet email.')
+      } else {
+        setError('Email ou mot de passe incorrect.')
+      }
     } finally { setLoading(false) }
   }
 
