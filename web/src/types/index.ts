@@ -7,8 +7,23 @@ export interface Bottle {
   price: number
   supplierId: string
   restaurantId: string
+  catalogProductId?: string
   createdAt: Date
   updatedAt: Date
+}
+
+export interface Product {
+  id: string
+  name: string
+  brand: string
+  category: BottleCategory
+  volume?: string
+}
+
+export interface SupplierProduct {
+  id: string
+  supplierId: string
+  productId: string
 }
 
 export type BottleCategory =

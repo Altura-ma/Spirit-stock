@@ -1,8 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { ClipboardList, User } from 'lucide-react'
+import { ClipboardList, BookOpen, User } from 'lucide-react'
 
 const tabs = [
   { to: '/supplier', label: 'Commandes', icon: ClipboardList, exact: true },
+  { to: '/supplier/catalog', label: 'Catalogue', icon: BookOpen },
   { to: '/supplier/profile', label: 'Profil', icon: User },
 ]
 

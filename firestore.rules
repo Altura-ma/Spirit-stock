@@ -77,5 +77,16 @@ service cloud.firestore {
       allow create: if isAuthenticated() && myRestaurantId() == request.resource.data.restaurantId;
       allow update, delete: if false;
     }
+
+    match /products/{productId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /supplier_products/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && mySupplierId() == request.resource.data.supplierId;
+      allow update, delete: if isAuthenticated() && mySupplierId() == resource.data.supplierId;
+    }
   }
 }

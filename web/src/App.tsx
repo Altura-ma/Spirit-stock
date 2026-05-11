@@ -20,6 +20,7 @@ import ProfilePage from './pages/ProfilePage'
 import MovementsPage from './pages/MovementsPage'
 import SupplierOrdersPage from './pages/SupplierOrdersPage'
 import SupplierProfilePage from './pages/SupplierProfilePage'
+import SupplierCatalogPage from './pages/SupplierCatalogPage'
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
             </ProtectedSupplierRoute>
           }>
             <Route index element={<SupplierOrdersPage />} />
+            <Route path="catalog" element={<SupplierCatalogPage />} />
             <Route path="profile" element={<SupplierProfilePage />} />
           </Route>
 
