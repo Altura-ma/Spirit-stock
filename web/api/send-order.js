@@ -2,7 +2,7 @@
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? 're_GgbqiBwc_52mftzNhNULbnsWAL8NkF8YB'
 const RESEND_FROM = process.env.RESEND_FROM_EMAIL ?? 'Spirit Stock <onboarding@resend.dev>'
-const BASE_URL = process.env.BASE_URL ?? 'https://spirit-stock.vercel.app'
+const BASE_URL = process.env.BASE_URL ?? 'https://app.spirit-stock.fr'
 
 function escapeHtml(str) {
   return String(str ?? '')
