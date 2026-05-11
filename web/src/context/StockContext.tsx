@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../config/firebase'
-import { Bottle, Supplier, Order, OrderItem } from '../types'
+import { Bottle, Supplier, Order, OrderItem, Movement } from '../types'
 import { useAuth } from './AuthContext'
 
 type Cart = { [bottleId: string]: number }
@@ -10,6 +10,7 @@ interface StockContextType {
   bottles: Bottle[]
   suppliers: Supplier[]
   orders: Order[]
+  movements: Movement[]
   loading: boolean
   error: string | null
   addBottle: (data: Omit<Bottle, 'id' | 'restaurantId' | 'createdAt' | 'updatedAt'>) => Promise<void>
@@ -41,15 +42,16 @@ export function StockProvider({ children }: { children: ReactNode }) {
   const [bottles, setBottles] = useState<Bottle[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [orders, setOrders] = useState<Order[]>([])
+  const [movements, setMovements] = useState<Movement[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [cart, setCart] = useState<Cart>({})
 
   useEffect(() => {
-    if (!user) { setBottles([]); setSuppliers([]); setOrders([]); setLoading(false); return }
+    if (!user) { setBottles([]); setSuppliers([]); setOrders([]); setMovements([]); setLoading(false); return }
     setLoading(true); setError(null)
-    let bLoaded = false, sLoaded = false, oLoaded = false
-    const check = () => { if (bLoaded && sLoaded && oLoaded) setLoading(false) }
+    let bLoaded = false, sLoaded = false, oLoaded = false, mLoaded = false
+    const check = () => { if (bLoaded && sLoaded && oLoaded && mLoaded) setLoading(false) }
 
     const ubottles = onSnapshot(
       query(collection(db, 'bottles'), where('restaurantId', '==', user.restaurantId)),
@@ -69,20 +71,53 @@ export function StockProvider({ children }: { children: ReactNode }) {
       },
       () => { oLoaded = true; check() }
     )
-    return () => { ubottles(); usuppliers(); uorders() }
+    const umovements = onSnapshot(
+      query(collection(db, 'movements'), where('restaurantId', '==', user.restaurantId)),
+      snap => {
+        setMovements(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() ?? new Date() })) as Movement[])
+        mLoaded = true; check()
+      },
+      () => { mLoaded = true; check() }
+    )
+    return () => { ubottles(); usuppliers(); uorders(); umovements() }
   }, [user])
+
+  const addMovement = async (data: Omit<Movement, 'id' | 'restaurantId' | 'createdAt'>) => {
+    if (!user) return
+    await addDoc(collection(db, 'movements'), { ...data, restaurantId: user.restaurantId, createdAt: serverTimestamp() })
+  }
 
   const addBottle = async (data: Omit<Bottle, 'id' | 'restaurantId' | 'createdAt' | 'updatedAt'>) => {
     if (!user) throw new Error('Non connecté')
-    await addDoc(collection(db, 'bottles'), { ...data, restaurantId: user.restaurantId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+    const ref = await addDoc(collection(db, 'bottles'), { ...data, restaurantId: user.restaurantId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+    if (data.quantity > 0) {
+      addMovement({ bottleId: ref.id, bottleName: data.name, category: data.category, type: 'adjustment_add', quantity: data.quantity, previousQuantity: 0, newQuantity: data.quantity }).catch(console.error)
+    }
   }
-  const updateBottle = async (id: string, data: Partial<Bottle>) => await updateDoc(doc(db, 'bottles', id), { ...data, updatedAt: serverTimestamp() })
+
+  const updateBottle = async (id: string, data: Partial<Bottle>) => {
+    const bottle = bottles.find(b => b.id === id)
+    await updateDoc(doc(db, 'bottles', id), { ...data, updatedAt: serverTimestamp() })
+    if (data.quantity !== undefined && bottle && data.quantity !== bottle.quantity) {
+      const diff = data.quantity - bottle.quantity
+      addMovement({
+        bottleId: id, bottleName: data.name ?? bottle.name, category: data.category ?? bottle.category,
+        type: diff > 0 ? 'adjustment_add' : 'adjustment_remove',
+        quantity: Math.abs(diff), previousQuantity: bottle.quantity, newQuantity: data.quantity,
+      }).catch(console.error)
+    }
+  }
+
   const deleteBottle = async (id: string) => await deleteDoc(doc(db, 'bottles', id))
+
   const sellBottle = async (id: string, qty: number) => {
     const bottle = bottles.find(b => b.id === id)
     if (!bottle) return
-    await updateDoc(doc(db, 'bottles', id), { quantity: Math.max(0, bottle.quantity - qty), updatedAt: serverTimestamp() })
+    const newQty = Math.max(0, bottle.quantity - qty)
+    await updateDoc(doc(db, 'bottles', id), { quantity: newQty, updatedAt: serverTimestamp() })
+    addMovement({ bottleId: id, bottleName: bottle.name, category: bottle.category, type: 'sale', quantity: qty, previousQuantity: bottle.quantity, newQuantity: newQty }).catch(console.error)
   }
+
   const addSupplier = async (data: Omit<Supplier, 'id' | 'restaurantId'>) => {
     if (!user) throw new Error('Non connecté')
     await addDoc(collection(db, 'suppliers'), { ...data, restaurantId: user.restaurantId })
@@ -144,7 +179,11 @@ export function StockProvider({ children }: { children: ReactNode }) {
     await updateDoc(doc(db, 'orders', orderId), { status: 'received', receivedAt: serverTimestamp() })
     await Promise.all(order.items.map(async item => {
       const bottle = bottles.find(b => b.id === item.bottleId)
-      if (bottle) await updateDoc(doc(db, 'bottles', item.bottleId), { quantity: bottle.quantity + item.quantity, updatedAt: serverTimestamp() })
+      if (bottle) {
+        const newQty = bottle.quantity + item.quantity
+        await updateDoc(doc(db, 'bottles', item.bottleId), { quantity: newQty, updatedAt: serverTimestamp() })
+        addMovement({ bottleId: item.bottleId, bottleName: item.bottleName, category: item.category, type: 'order_received', quantity: item.quantity, previousQuantity: bottle.quantity, newQuantity: newQty, orderId, supplierName: order.supplierName }).catch(console.error)
+      }
     }))
   }
 
@@ -156,7 +195,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
 
   return (
     <StockContext.Provider value={{
-      bottles, suppliers, orders, loading, error,
+      bottles, suppliers, orders, movements, loading, error,
       addBottle, updateBottle, deleteBottle, sellBottle,
       addSupplier, updateSupplier, deleteSupplier,
       cart, addToCart, removeFromCart, setCartQty, clearSupplierCart, clearCart, getCartTotal,

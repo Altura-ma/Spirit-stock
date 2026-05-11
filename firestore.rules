@@ -50,5 +50,11 @@ service cloud.firestore {
             .hasOnly(['status', 'acceptedAt', 'cancelledAt'])
         && request.resource.data.status in ['accepted', 'cancelled', 'refused'];
     }
+
+    match /movements/{movementId} {
+      allow read: if isAuthenticated() && myRestaurantId() == resource.data.restaurantId;
+      allow create: if isAuthenticated() && myRestaurantId() == request.resource.data.restaurantId;
+      allow update, delete: if false;
+    }
   }
 }

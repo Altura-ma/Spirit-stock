@@ -62,3 +62,20 @@ export interface Order {
   receivedAt?: Date
   cancelledAt?: Date
 }
+
+export type MovementType = 'sale' | 'order_received' | 'adjustment_add' | 'adjustment_remove'
+
+export interface Movement {
+  id: string
+  restaurantId: string
+  bottleId: string
+  bottleName: string
+  category: BottleCategory
+  type: MovementType
+  quantity: number
+  previousQuantity: number
+  newQuantity: number
+  orderId?: string
+  supplierName?: string
+  createdAt: Date
+}

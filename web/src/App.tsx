@@ -15,6 +15,7 @@ import RestockPage from './pages/RestockPage'
 import OrdersPage from './pages/OrdersPage'
 import SuppliersPage from './pages/SuppliersPage'
 import ProfilePage from './pages/ProfilePage'
+import MovementsPage from './pages/MovementsPage'
 
 export default function App() {
   return (
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="orders" element={<OrdersPage />} />
             <Route path="suppliers" element={<SuppliersPage />} />
             <Route path="profile" element={<ProfilePage />} />
+            <Route path="history" element={<MovementsPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

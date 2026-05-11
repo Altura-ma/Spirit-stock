@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Wine, AlertCircle, TrendingUp, User, ChevronRight } from 'lucide-react'
+import { Wine, AlertCircle, TrendingUp, ChevronRight, History } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useStock } from '../context/StockContext'
 import { CATEGORY_LABELS } from '../types'
@@ -44,6 +44,13 @@ export default function DashboardPage() {
           <p className="text-xs text-gray-500 mt-0.5">Valeur</p>
         </div>
       </div>
+
+      {/* History shortcut */}
+      <Link to="/history" className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-xl">
+        <History size={18} className="text-primary flex-shrink-0" />
+        <p className="text-gray-700 text-sm font-medium flex-1">Historique des mouvements</p>
+        <ChevronRight size={16} className="text-gray-400" />
+      </Link>
 
       {/* Out of stock */}
       {outOfStock.length > 0 && (

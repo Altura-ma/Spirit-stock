@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Search, X, Pencil, Trash2, MinusCircle, ShoppingCart } from 'lucide-react'
+import { Plus, Search, X, Pencil, Trash2, MinusCircle, ShoppingCart, History } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { CATEGORY_LABELS, BottleCategory, Bottle } from '../types'
 
@@ -45,13 +45,17 @@ export default function InventoryPage() {
   const { bottles, deleteBottle, sellBottle, error, cart, addToCart, setCartQty } = useStock()
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState<BottleCategory | 'all'>('all')
+  const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'empty'>('all')
   const [selling, setSelling] = useState<Bottle | null>(null)
   const navigate = useNavigate()
 
-  const filtered = bottles.filter(b =>
-    b.name.toLowerCase().includes(search.toLowerCase()) &&
-    (cat === 'all' || b.category === cat)
-  )
+  const filtered = bottles.filter(b => {
+    if (!b.name.toLowerCase().includes(search.toLowerCase())) return false
+    if (cat !== 'all' && b.category !== cat) return false
+    if (stockFilter === 'low') return b.quantity > 0 && b.quantity <= b.minThreshold
+    if (stockFilter === 'empty') return b.quantity === 0
+    return true
+  })
 
   const handleDelete = (b: Bottle) => {
     if (window.confirm(`Supprimer "${b.name}" ?`)) deleteBottle(b.id)
@@ -61,9 +65,14 @@ export default function InventoryPage() {
     <div className="p-4 space-y-3">
       <div className="flex items-center justify-between pt-2">
         <h1 className="text-xl font-bold text-gray-900">Inventaire</h1>
-        <Link to="/inventory/add" className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white shadow-sm">
-          <Plus size={22} />
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/history" className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-400">
+            <History size={18} />
+          </Link>
+          <Link to="/inventory/add" className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white shadow-sm">
+            <Plus size={22} />
+          </Link>
+        </div>
       </div>
 
       {error && <div className="bg-danger-light text-danger text-sm p-3 rounded-xl">{error}</div>}
@@ -73,6 +82,19 @@ export default function InventoryPage() {
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input className="input pl-9 pr-8" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." />
         {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><X size={16} /></button>}
+      </div>
+
+      {/* Stock status filter */}
+      <div className="flex gap-2">
+        {(['all', 'low', 'empty'] as const).map(v => {
+          const labels = { all: 'Tout', low: '⚠️ Alertes', empty: '🔴 Épuisés' }
+          return (
+            <button key={v} onClick={() => setStockFilter(v)}
+              className={`flex-1 py-1.5 rounded-full text-xs font-semibold border transition-colors ${stockFilter === v ? 'bg-primary text-white border-primary' : 'bg-white text-gray-500 border-gray-200'}`}>
+              {labels[v]}
+            </button>
+          )
+        })}
       </div>
 
       {/* Category filter */}
