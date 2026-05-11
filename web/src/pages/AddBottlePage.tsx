@@ -19,12 +19,17 @@ export default function AddBottlePage() {
   const [form, setForm] = useState({ name: '', category: 'whisky' as BottleCategory, quantity: '', minThreshold: '', price: '', supplierId: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [catalogError, setCatalogError] = useState(false)
 
   useEffect(() => {
     getDocs(collection(db, 'products')).then(snap => {
       setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Product[])
       setProductsLoading(false)
-    }).catch(() => setProductsLoading(false))
+    }).catch(err => {
+      console.error('products fetch failed:', err)
+      setCatalogError(true)
+      setProductsLoading(false)
+    })
   }, [])
 
   useEffect(() => {
@@ -104,6 +109,13 @@ export default function AddBottlePage() {
             <Package size={36} className="mx-auto mb-3 text-gray-300" />
             <p className="text-sm">Saisissez au moins 2 caractères</p>
             <button onClick={handleCustom} className="mt-5 text-primary text-sm font-semibold">
+              + Créer un produit personnalisé
+            </button>
+          </div>
+        ) : catalogError ? (
+          <div className="text-center py-8 text-gray-400">
+            <p className="text-sm text-danger">Catalogue indisponible — vérifiez les règles Firestore</p>
+            <button onClick={handleCustom} className="mt-4 text-primary text-sm font-semibold">
               + Créer un produit personnalisé
             </button>
           </div>
