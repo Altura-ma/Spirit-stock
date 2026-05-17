@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { useAuth } from '../context/AuthContext'
-import { Search, Check, Package, Plus, X } from 'lucide-react'
+import { Check, Package, Plus, X } from 'lucide-react'
 import { CATEGORY_LABELS, CATEGORIES, BottleCategory, Product } from '../types'
 
 const EMPTY_FORM = { name: '', brand: '', category: 'whisky' as BottleCategory, volume: '' }
@@ -164,9 +164,8 @@ export default function SupplierCatalogPage() {
       )}
 
       <div className="relative">
-        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
-          className="input pl-10"
+          className="input"
           placeholder="Rechercher…"
           value={search}
           onChange={e => setSearch(e.target.value)}
