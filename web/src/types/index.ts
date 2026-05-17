@@ -18,6 +18,7 @@ export interface Product {
   brand: string
   category: BottleCategory
   volume?: string
+  createdBy?: string // supplierId of the supplier who created this reference
 }
 
 export interface SupplierProduct {

@@ -89,7 +89,13 @@ service cloud.firestore {
 
     match /products/{productId} {
       allow read: if isAuthenticated();
-      allow write: if false;
+      // Any authenticated supplier can create a product reference
+      allow create: if isAuthenticated() && mySupplierId() != null
+        && request.resource.data.createdBy == mySupplierId();
+      // Only the supplier who created the reference can update or delete it
+      allow update, delete: if isAuthenticated()
+        && mySupplierId() != null
+        && resource.data.createdBy == mySupplierId();
     }
 
     match /supplier_products/{id} {
