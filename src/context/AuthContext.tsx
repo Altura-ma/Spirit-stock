@@ -26,11 +26,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const DEFAULT_SUPPLIER = {
-  name: 'Louis Mathieu',
-  phone: '0782407933',
-};
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: firebaseUser.email ?? '',
               restaurantId: data.restaurantId,
               restaurantName: data.restaurantName,
+              role: data.role ?? 'restaurant',
             });
           } else {
             // Doc utilisateur manquant : déconnexion propre
@@ -74,38 +70,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: credential.user.email ?? '',
         restaurantId: data.restaurantId,
         restaurantName: data.restaurantName,
+        role: data.role ?? 'restaurant',
       });
     }
   };
 
   const signUp = async (email: string, password: string, restaurantName: string) => {
     const credential = await createUserWithEmailAndPassword(auth, email, password);
+    try {
+      const restaurantRef = await addDoc(collection(db, 'restaurants'), {
+        name: restaurantName,
+        ownerId: credential.user.uid,
+        createdAt: serverTimestamp(),
+      });
 
-    const restaurantRef = await addDoc(collection(db, 'restaurants'), {
-      name: restaurantName,
-      ownerId: credential.user.uid,
-      createdAt: serverTimestamp(),
-    });
+      await setDoc(doc(db, 'users', credential.user.uid), {
+        email,
+        restaurantId: restaurantRef.id,
+        restaurantName,
+        role: 'restaurant',
+        createdAt: serverTimestamp(),
+      });
 
-    await addDoc(collection(db, 'suppliers'), {
-      name: DEFAULT_SUPPLIER.name,
-      phone: DEFAULT_SUPPLIER.phone,
-      restaurantId: restaurantRef.id,
-    });
-
-    await setDoc(doc(db, 'users', credential.user.uid), {
-      email,
-      restaurantId: restaurantRef.id,
-      restaurantName,
-      createdAt: serverTimestamp(),
-    });
-
-    setUser({
-      uid: credential.user.uid,
-      email,
-      restaurantId: restaurantRef.id,
-      restaurantName,
-    });
+      setUser({
+        uid: credential.user.uid,
+        email,
+        restaurantId: restaurantRef.id,
+        restaurantName,
+        role: 'restaurant',
+      });
+    } catch (err) {
+      await credential.user.delete();
+      throw err;
+    }
   };
 
   const signOut = async () => {

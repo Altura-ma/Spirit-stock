@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Wine, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
@@ -32,11 +32,9 @@ export default function LoginPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl mb-4">
-            <Wine size={32} className="text-accent" />
-          </div>
+          <img src="/logo-spirit-stock.png" alt="Spirit Stock" className="w-20 h-20 object-contain mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-primary">Spirit Stock</h1>
-          <p className="text-gray-500 mt-1 text-sm">Gestion de stock professionnelle</p>
+          <p className="text-gray-500 mt-1 text-sm">14 jours gratuits · puis 20€/mois</p>
         </div>
 
         <form onSubmit={handleSubmit} className="card p-6 space-y-4">

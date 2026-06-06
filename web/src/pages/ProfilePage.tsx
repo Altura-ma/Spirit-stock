@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft, Lock, LogOut } from 'lucide-react'
+import { ArrowLeft, CreditCard, Lock, LogOut } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth'
 import { auth } from '../config/firebase'
@@ -7,20 +7,28 @@ import { useAuth } from '../context/AuthContext'
 import { useStock } from '../context/StockContext'
 
 export default function ProfilePage() {
-  const { user, signOut } = useAuth()
+  const { user, signOut, openBillingPortal } = useAuth()
   const { bottles, getTotalValue } = useStock()
   const [showPwd, setShowPwd] = useState(false)
+  const [billingLoading, setBillingLoading] = useState(false)
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
+  const handleBillingPortal = async () => {
+    setBillingLoading(true)
+    try { await openBillingPortal() }
+    catch { setMsg({ type: 'err', text: 'Portail de paiement indisponible.' }); setBillingLoading(false) }
+  }
+
   const handleChangePwd = async (e: React.FormEvent) => {
     e.preventDefault()
     setMsg(null)
     if (next !== confirmPwd) { setMsg({ type: 'err', text: 'Les mots de passe ne correspondent pas.' }); return }
-    if (next.length < 6) { setMsg({ type: 'err', text: 'Min. 6 caractères.' }); return }
+    const strongPassword = /^(?=.*[0-9]).{8,}$/
+    if (!strongPassword.test(next)) { setMsg({ type: 'err', text: 'Mot de passe : 8 caractères minimum dont 1 chiffre.' }); return }
     setLoading(true)
     try {
       const cu = auth.currentUser
@@ -62,6 +70,20 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* Billing */}
+      <div className="card p-4 space-y-3">
+        <div className="flex items-center gap-3">
+          <CreditCard size={18} className="text-primary" />
+          <div className="flex-1">
+            <p className="font-medium text-gray-900">Abonnement</p>
+            <p className="text-xs text-gray-400">{user?.subscriptionStatus === 'trialing' ? 'Essai gratuit actif' : user?.subscriptionStatus === 'active' ? 'Actif' : user?.subscriptionStatus ?? 'En attente'}</p>
+          </div>
+        </div>
+        <button onClick={handleBillingPortal} disabled={billingLoading} className="btn-secondary w-full">
+          {billingLoading ? 'Ouverture…' : 'Gérer paiement et abonnement'}
+        </button>
+      </div>
+
       {/* Change password */}
       <div className="card overflow-hidden">
         <button onClick={() => setShowPwd(v => !v)} className="w-full flex items-center gap-3 p-4">
@@ -73,7 +95,7 @@ export default function ProfilePage() {
           <form onSubmit={handleChangePwd} className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-4">
             {msg && <div className={`text-sm p-3 rounded-xl ${msg.type === 'ok' ? 'bg-success-light text-success' : 'bg-danger-light text-danger'}`}>{msg.text}</div>}
             <div><label className="label">Mot de passe actuel</label><input className="input" type="password" value={current} onChange={e => setCurrent(e.target.value)} placeholder="••••••••" required /></div>
-            <div><label className="label">Nouveau mot de passe</label><input className="input" type="password" value={next} onChange={e => setNext(e.target.value)} placeholder="Min. 6 caractères" required /></div>
+            <div><label className="label">Nouveau mot de passe</label><input className="input" type="password" value={next} onChange={e => setNext(e.target.value)} placeholder="8 caractères minimum dont 1 chiffre" required /></div>
             <div><label className="label">Confirmer</label><input className="input" type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} placeholder="••••••••" required /></div>
             <button type="submit" disabled={loading} className="btn-primary">
               {loading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Enregistrer'}

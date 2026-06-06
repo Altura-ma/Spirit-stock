@@ -18,7 +18,8 @@ export default function RegisterSupplierPage() {
     e.preventDefault()
     setError('')
     if (password !== confirm) { setError('Les mots de passe ne correspondent pas.'); return }
-    if (password.length < 6) { setError('Mot de passe trop court (min. 6 caractères).'); return }
+    const strongPassword = /^(?=.*[0-9]).{8,}$/
+    if (!strongPassword.test(password)) { setError('Mot de passe : 8 caractères minimum dont 1 chiffre.'); return }
     setLoading(true)
     try {
       await signUpSupplier(email.trim().toLowerCase(), password, name.trim(), phone.trim().replace(/\s/g, ''))
@@ -64,7 +65,7 @@ export default function RegisterSupplierPage() {
           </div>
           <div>
             <label className="label">Mot de passe *</label>
-            <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min. 6 caractères" required />
+            <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="8 caractères minimum dont 1 chiffre" required />
           </div>
           <div>
             <label className="label">Confirmer le mot de passe *</label>

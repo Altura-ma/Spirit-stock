@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { ClipboardList, BookOpen, User } from 'lucide-react'
+import NotificationPermissionPrompt from './NotificationPermissionPrompt'
 
 const tabs = [
   { to: '/supplier', label: 'Commandes', icon: ClipboardList, exact: true },
@@ -13,6 +14,7 @@ export default function SupplierLayout() {
       <main className="flex-1 overflow-y-auto pb-20">
         <Outlet />
       </main>
+      <NotificationPermissionPrompt />
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
         <div className="max-w-lg mx-auto flex">
           {tabs.map(({ to, label, icon: Icon, exact }) => (

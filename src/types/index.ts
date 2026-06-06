@@ -61,6 +61,7 @@ export interface User {
   email: string;
   restaurantId: string;
   restaurantName: string;
+  role?: 'restaurant' | 'supplier';
 }
 
 export type RootStackParamList = {

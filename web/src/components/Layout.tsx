@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { LayoutGrid, Wine, ShoppingCart, ClipboardList, Phone } from 'lucide-react'
 import { useStock } from '../context/StockContext'
+import NotificationPermissionPrompt from './NotificationPermissionPrompt'
 
 export default function Layout() {
   const { getCartTotal, getPendingOrders } = useStock()
@@ -21,6 +22,8 @@ export default function Layout() {
       <main className="flex-1 overflow-y-auto pb-20">
         <Outlet />
       </main>
+
+      <NotificationPermissionPrompt />
 
       {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
