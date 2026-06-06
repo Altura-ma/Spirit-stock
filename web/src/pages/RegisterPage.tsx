@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Wine, ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function RegisterPage() {
@@ -35,9 +35,7 @@ export default function RegisterPage() {
 
       <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl mb-4 shadow-md">
-            <Wine size={30} className="text-accent" />
-          </div>
+          <img src="/logo-spirit-stock.png" alt="Spirit Stock" className="w-20 h-20 object-contain mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-primary">Créer un compte</h1>
           <p className="text-gray-400 text-sm mt-1">1 compte par établissement · 20€/mois</p>
         </div>
