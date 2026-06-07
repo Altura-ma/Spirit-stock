@@ -33,8 +33,9 @@ export default function RegisterScreen({ navigation }: any) {
       Alert.alert('Erreur', 'Les mots de passe ne correspondent pas.');
       return;
     }
-    if (password.length < 6) {
-      Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères.');
+    const strongPassword = /^(?=.*[0-9]).{8,}$/;
+    if (!strongPassword.test(password)) {
+      Alert.alert('Erreur', 'Mot de passe : 8 caractères minimum dont 1 chiffre.');
       return;
     }
     setLoading(true);
@@ -94,7 +95,7 @@ export default function RegisterScreen({ navigation }: any) {
               style={styles.input}
               value={password}
               onChangeText={setPassword}
-              placeholder="Min. 6 caractères"
+              placeholder="8 caractères minimum dont 1 chiffre"
               placeholderTextColor={COLORS.textSecondary}
               secureTextEntry
             />

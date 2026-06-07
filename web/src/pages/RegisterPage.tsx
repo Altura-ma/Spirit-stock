@@ -10,7 +10,7 @@ export default function RegisterPage() {
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const { signUp } = useAuth()
+  const { signUp, startCheckout } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,9 +21,11 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       await signUp(email.trim().toLowerCase(), password, restaurantName.trim())
-      navigate('/')
+      await startCheckout()
     } catch (err: any) {
-      setError(err.code === 'auth/email-already-in-use' ? 'Cet email est déjà utilisé.' : 'Erreur lors de la création du compte.')
+      if (err.code === 'auth/email-already-in-use') setError('Cet email est déjà utilisé.')
+      else if (err.code === 'app/billing-error') setError('Compte créé, mais redirection paiement impossible. Connectez-vous puis relancez le paiement.')
+      else setError('Erreur lors de la création du compte.')
     } finally { setLoading(false) }
   }
 
@@ -37,7 +39,7 @@ export default function RegisterPage() {
         <div className="text-center mb-8">
           <img src="/logo-spirit-stock.png" alt="Spirit Stock" className="w-20 h-20 object-contain mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-primary">Créer un compte</h1>
-          <p className="text-gray-400 text-sm mt-1">1 compte par établissement · 20€/mois</p>
+          <p className="text-gray-400 text-sm mt-1">14 jours gratuits · puis 20€/mois</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -65,7 +67,7 @@ export default function RegisterPage() {
           </div>
 
           <button type="submit" disabled={loading} className="btn-primary mt-2">
-            {loading ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Créer mon compte'}
+            {loading ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Commencer l’essai gratuit'}
           </button>
 
           <p className="text-center text-sm text-gray-400 pt-2">

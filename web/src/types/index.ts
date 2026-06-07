@@ -56,6 +56,8 @@ export interface AppUser {
   restaurantName: string
   role?: 'restaurant' | 'supplier'
   supplierId?: string
+  subscriptionStatus?: 'pending_checkout' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid' | 'incomplete' | 'incomplete_expired' | 'paused'
+  stripeCustomerId?: string
 }
 
 export interface OrderItem {

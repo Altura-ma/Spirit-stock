@@ -1,12 +1,57 @@
 // Vercel serverless function — sends the order email to the supplier via Resend
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY ?? 're_GgbqiBwc_52mftzNhNULbnsWAL8NkF8YB'
-const RESEND_FROM = process.env.RESEND_FROM_EMAIL ?? 'Spirit Stock <onboarding@resend.dev>'
-const BASE_URL = process.env.BASE_URL ?? 'https://app.spirit-stock.fr'
+import { cert, getApps, initializeApp } from 'firebase-admin/app'
+import { getAuth } from 'firebase-admin/auth'
+import { getFirestore } from 'firebase-admin/firestore'
+
+const requiredEnv = (key) => {
+  const value = process.env[key]
+  if (!value) throw new Error(`${key} not set`)
+  return value
+}
+
+const RESEND_API_KEY = requiredEnv('RESEND_API_KEY')
+const RESEND_FROM = requiredEnv('RESEND_FROM_EMAIL')
+const BASE_URL = requiredEnv('BASE_URL')
+
+function initAdmin() {
+  if (!getApps().length) {
+    initializeApp({ credential: cert(JSON.parse(requiredEnv('FIREBASE_SERVICE_ACCOUNT_JSON'))) })
+  }
+}
+
+function getAdminDb() {
+  initAdmin()
+  return getFirestore()
+}
+
+function getAdminAuth() {
+  initAdmin()
+  return getAuth()
+}
 
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+function isValidEmail(email) {
+  return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+function sanitizeItems(items) {
+  if (!Array.isArray(items) || items.length === 0 || items.length > 100) return null
+
+  const sanitized = []
+  for (const item of items) {
+    const bottleName = typeof item?.bottleName === 'string' ? item.bottleName.trim() : ''
+    const quantity = Number(item?.quantity)
+    if (!bottleName || bottleName.length > 200 || !Number.isInteger(quantity) || quantity <= 0 || quantity > 10000) {
+      return null
+    }
+    sanitized.push({ bottleName, quantity })
+  }
+  return sanitized
 }
 
 function buildItemsRows(items) {
@@ -46,26 +91,17 @@ function buildEmail({ restaurantName, items, acceptUrl, cancelUrl, date, time })
   <table width="100%" cellpadding="0" cellspacing="0">
     <tr>
       <td align="center" style="padding:40px 16px;">
-
         <table width="540" cellpadding="0" cellspacing="0" style="max-width:540px;">
-
-          <!-- Logo / brand row -->
           <tr>
             <td align="center" style="padding-bottom:20px;">
               <span style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:#8B4513;letter-spacing:2px;text-transform:uppercase;">Spirit Stock</span>
             </td>
           </tr>
-
-          <!-- Card -->
           <tr>
             <td style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.10);">
-
-              <!-- Orange top bar -->
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr><td style="background:#E67E22;height:6px;border-radius:20px 20px 0 0;font-size:0;line-height:0;">&nbsp;</td></tr>
               </table>
-
-              <!-- Header -->
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="padding:32px 36px 24px;">
@@ -79,13 +115,9 @@ function buildEmail({ restaurantName, items, acceptUrl, cancelUrl, date, time })
                   </td>
                 </tr>
               </table>
-
-              <!-- Divider -->
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr><td style="padding:0 36px;"><div style="height:1px;background:#F0EDE8;font-size:0;line-height:0;">&nbsp;</div></td></tr>
               </table>
-
-              <!-- Items -->
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="padding:24px 36px;">
@@ -96,13 +128,9 @@ function buildEmail({ restaurantName, items, acceptUrl, cancelUrl, date, time })
                   </td>
                 </tr>
               </table>
-
-              <!-- Divider -->
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr><td style="padding:0 36px;"><div style="height:1px;background:#F0EDE8;font-size:0;line-height:0;">&nbsp;</div></td></tr>
               </table>
-
-              <!-- Buttons -->
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="padding:28px 36px 36px;">
@@ -126,11 +154,8 @@ function buildEmail({ restaurantName, items, acceptUrl, cancelUrl, date, time })
                   </td>
                 </tr>
               </table>
-
             </td>
           </tr>
-
-          <!-- Footer -->
           <tr>
             <td align="center" style="padding-top:20px;">
               <p style="margin:0;font-family:Arial,sans-serif;font-size:12px;color:#BBB;">
@@ -138,7 +163,6 @@ function buildEmail({ restaurantName, items, acceptUrl, cancelUrl, date, time })
               </p>
             </td>
           </tr>
-
         </table>
       </td>
     </tr>
@@ -152,6 +176,18 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
+  const authHeader = req.headers.authorization
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  let decodedToken
+  try {
+    decodedToken = await getAdminAuth().verifyIdToken(authHeader.slice(7))
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' })
+  }
+
   let body
   try {
     body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
@@ -159,19 +195,50 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid JSON' })
   }
 
-  const { orderId, token, supplierEmail, restaurantName, items, createdAt } = body
-
-  if (!orderId || !token || !supplierEmail || !items?.length) {
-    return res.status(400).json({ error: 'Missing required fields' })
+  const { orderId } = body ?? {}
+  if (typeof orderId !== 'string' || !orderId.trim()) {
+    return res.status(400).json({ error: 'Missing orderId' })
   }
 
-  const d = new Date(createdAt)
-  const date = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
-  const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const db = getAdminDb()
+  const [userSnap, orderSnap] = await Promise.all([
+    db.collection('users').doc(decodedToken.uid).get(),
+    db.collection('orders').doc(orderId).get(),
+  ])
 
-  const acceptUrl = `${BASE_URL}/api/order-action?orderId=${orderId}&token=${encodeURIComponent(token)}&action=accept`
-  const cancelUrl = `${BASE_URL}/api/order-action?orderId=${orderId}&token=${encodeURIComponent(token)}&action=cancel`
+  if (!userSnap.exists || !orderSnap.exists) {
+    return res.status(404).json({ error: 'Not found' })
+  }
 
+  const user = userSnap.data()
+  const order = orderSnap.data()
+  if (!user?.restaurantId || user.restaurantId !== order.restaurantId) {
+    return res.status(403).json({ error: 'Forbidden' })
+  }
+
+  if (order.status !== 'pending') {
+    return res.status(409).json({ error: 'Order already processed' })
+  }
+
+  if (!order.token || !isValidEmail(order.supplierEmail)) {
+    return res.status(400).json({ error: 'Invalid order' })
+  }
+
+  const items = sanitizeItems(order.items)
+  if (!items) {
+    return res.status(400).json({ error: 'Invalid items' })
+  }
+
+  const createdAt = order.createdAt?.toDate?.() ?? new Date()
+  const date = createdAt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+  const time = createdAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+
+  const token = encodeURIComponent(order.token)
+  const safeOrderId = encodeURIComponent(orderId)
+  const acceptUrl = `${BASE_URL}/api/order-action?orderId=${safeOrderId}&token=${token}&action=accept`
+  const cancelUrl = `${BASE_URL}/api/order-action?orderId=${safeOrderId}&token=${token}&action=cancel`
+
+  const restaurantName = order.restaurantName ?? user.restaurantName ?? 'Restaurant'
   const html = buildEmail({ restaurantName, items, acceptUrl, cancelUrl, date, time })
 
   const emailRes = await fetch('https://api.resend.com/emails', {
@@ -182,16 +249,16 @@ export default async function handler(req, res) {
     },
     body: JSON.stringify({
       from: RESEND_FROM,
-      to: [supplierEmail],
+      to: [order.supplierEmail],
       subject: `Nouvelle commande — ${restaurantName}`,
       html,
     }),
   })
 
-  const emailData = await emailRes.json()
+  const emailData = await emailRes.json().catch(() => ({}))
   if (!emailRes.ok) {
     console.error('Resend error:', emailData)
-    return res.status(500).json({ error: 'Email send failed', details: emailData })
+    return res.status(500).json({ error: 'Email send failed' })
   }
 
   return res.status(200).json({ success: true, emailId: emailData.id })

@@ -127,6 +127,7 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateBottle = async (id: string, data: Partial<Bottle>) => {
+    if (!bottles.find((b) => b.id === id)) throw new Error('Not found');
     await updateDoc(doc(db, 'bottles', id), {
       ...data,
       updatedAt: serverTimestamp(),
@@ -134,6 +135,7 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteBottle = async (id: string) => {
+    if (!bottles.find((b) => b.id === id)) throw new Error('Not found');
     await deleteDoc(doc(db, 'bottles', id));
   };
 
@@ -162,10 +164,12 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateSupplier = async (id: string, data: Partial<Supplier>) => {
+    if (!suppliers.find((s) => s.id === id)) throw new Error('Not found');
     await updateDoc(doc(db, 'suppliers', id), data);
   };
 
   const deleteSupplier = async (id: string) => {
+    if (!suppliers.find((s) => s.id === id)) throw new Error('Not found');
     await deleteDoc(doc(db, 'suppliers', id));
   };
 

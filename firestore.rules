@@ -3,7 +3,20 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.role in ['restaurant', 'supplier']
+        && (
+          (request.resource.data.role == 'restaurant'
+            && request.resource.data.subscriptionStatus == 'pending_checkout') ||
+          request.resource.data.role == 'supplier'
+        );
+      // Billing fields are written only by server-side Stripe webhooks (Admin SDK bypasses rules).
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['restaurantName', 'name', 'updatedAt']);
+      allow delete: if false;
     }
 
     function userDoc() {
@@ -24,45 +37,99 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function mySubscriptionStatus() {
+      return userDoc() != null ? userDoc().get('subscriptionStatus', null) : null;
+    }
+
+    function hasPaidRestaurantAccess(restaurantId) {
+      return isAuthenticated()
+        && myRestaurantId() == restaurantId
+        && mySubscriptionStatus() in ['trialing', 'active'];
+    }
+
+    function validCategory(category) {
+      return category in [
+        'whisky', 'rhum', 'vodka', 'gin', 'cognac', 'tequila',
+        'vin_rouge', 'vin_blanc', 'vin_rose', 'champagne', 'biere',
+        'liqueur', 'autre'
+      ];
+    }
+
+    function validBottle(d) {
+      return d.name is string && d.name.size() > 0 && d.name.size() <= 200
+        && d.quantity is int && d.quantity >= 0
+        && d.minThreshold is int && d.minThreshold >= 0
+        && d.price is number && d.price >= 0
+        && validCategory(d.category)
+        && d.supplierId is string
+        && d.restaurantId is string && d.restaurantId.size() > 0;
+    }
+
+    function validMovement(d) {
+      return d.bottleId is string && d.bottleId.size() > 0
+        && d.bottleName is string && d.bottleName.size() > 0 && d.bottleName.size() <= 200
+        && validCategory(d.category)
+        && d.type in ['sale', 'order_received', 'adjustment_add', 'adjustment_remove']
+        && d.quantity is int && d.quantity >= 0
+        && d.previousQuantity is int && d.previousQuantity >= 0
+        && d.newQuantity is int && d.newQuantity >= 0
+        && d.restaurantId is string && d.restaurantId.size() > 0;
+    }
+
     match /restaurants/{restaurantId} {
-      allow read: if isAuthenticated() && myRestaurantId() == restaurantId;
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && myRestaurantId() == restaurantId;
+      allow read: if hasPaidRestaurantAccess(restaurantId);
+      allow create: if isAuthenticated()
+        && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if hasPaidRestaurantAccess(restaurantId);
     }
 
     match /bottles/{bottleId} {
-      allow read, update, delete: if isAuthenticated() &&
-        myRestaurantId() == resource.data.restaurantId;
-      allow create: if isAuthenticated() &&
-        myRestaurantId() == request.resource.data.restaurantId;
+      allow read, delete: if isAuthenticated() &&
+        hasPaidRestaurantAccess(resource.data.restaurantId);
+      allow create: if isAuthenticated()
+        && hasPaidRestaurantAccess(request.resource.data.restaurantId)
+        && validBottle(request.resource.data);
+      allow update: if isAuthenticated()
+        && hasPaidRestaurantAccess(resource.data.restaurantId)
+        && request.resource.data.restaurantId == resource.data.restaurantId
+        && validBottle(request.resource.data);
     }
 
     match /suppliers/{supplierId} {
       allow read: if isAuthenticated() && (
         resource.data.isGlobal == true ||
-        myRestaurantId() == resource.data.restaurantId
-      );
-      // Restaurant-owned supplier
-      allow create: if isAuthenticated() &&
-        myRestaurantId() == request.resource.data.restaurantId;
-      // Platform/global supplier — no restaurantId check (user doc may not exist yet)
-      allow create: if isAuthenticated() &&
-        request.resource.data.isGlobal == true;
-      allow update: if isAuthenticated() && (
-        (myRestaurantId() == resource.data.restaurantId && resource.data.isGlobal != true) ||
+        hasPaidRestaurantAccess(resource.data.restaurantId) ||
         mySupplierId() == supplierId
       );
+
+      allow create: if isAuthenticated()
+        && request.resource.data.isGlobal != true
+        && (
+          hasPaidRestaurantAccess(request.resource.data.restaurantId) ||
+          request.resource.data.restaurantId == ''
+        );
+
+      allow update: if isAuthenticated() && (
+        (hasPaidRestaurantAccess(resource.data.restaurantId)
+          && resource.data.isGlobal != true
+          && request.resource.data.isGlobal != true
+          && request.resource.data.restaurantId == resource.data.restaurantId) ||
+        (mySupplierId() == supplierId
+          && request.resource.data.isGlobal != true
+          && request.resource.data.restaurantId == resource.data.restaurantId)
+      );
+
       allow delete: if isAuthenticated() &&
-        myRestaurantId() == resource.data.restaurantId &&
+        hasPaidRestaurantAccess(resource.data.restaurantId) &&
         resource.data.isGlobal != true;
     }
 
     match /orders/{orderId} {
       // Restaurant: full access to own orders
       allow read, update, delete: if isAuthenticated() &&
-        myRestaurantId() == resource.data.restaurantId;
+        hasPaidRestaurantAccess(resource.data.restaurantId);
       allow create: if isAuthenticated() &&
-        myRestaurantId() == request.resource.data.restaurantId;
+        hasPaidRestaurantAccess(request.resource.data.restaurantId);
 
       // Supplier: read their orders + accept/refuse
       allow read: if isAuthenticated() && mySupplierId() == resource.data.supplierId;
@@ -70,20 +137,13 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['status', 'acceptedAt', 'cancelledAt'])
         && request.resource.data.status in ['accepted', 'refused'];
-
-      // Unauthenticated reads — for the serverless order-action function
-      allow read: if !isAuthenticated();
-
-      // Unauthenticated status updates — for supplier accept/cancel via email link
-      allow update: if !isAuthenticated()
-        && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'acceptedAt', 'cancelledAt'])
-        && request.resource.data.status in ['accepted', 'cancelled', 'refused'];
     }
 
     match /movements/{movementId} {
-      allow read: if isAuthenticated() && myRestaurantId() == resource.data.restaurantId;
-      allow create: if isAuthenticated() && myRestaurantId() == request.resource.data.restaurantId;
+      allow read: if isAuthenticated() && hasPaidRestaurantAccess(resource.data.restaurantId);
+      allow create: if isAuthenticated()
+        && hasPaidRestaurantAccess(request.resource.data.restaurantId)
+        && validMovement(request.resource.data);
       allow update, delete: if false;
     }
 

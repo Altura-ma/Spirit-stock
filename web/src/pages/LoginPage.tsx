@@ -34,7 +34,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <img src="/logo-spirit-stock.png" alt="Spirit Stock" className="w-20 h-20 object-contain mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-primary">Spirit Stock</h1>
-          <p className="text-gray-500 mt-1 text-sm">Gestion de stock professionnelle</p>
+          <p className="text-gray-500 mt-1 text-sm">14 jours gratuits · puis 20€/mois</p>
         </div>
 
         <form onSubmit={handleSubmit} className="card p-6 space-y-4">

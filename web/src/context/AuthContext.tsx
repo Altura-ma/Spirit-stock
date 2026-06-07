@@ -15,6 +15,8 @@ interface AuthContextType {
   signUpSupplier: (email: string, password: string, name: string, phone: string) => Promise<void>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
+  startCheckout: () => Promise<void>
+  openBillingPortal: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -27,6 +29,8 @@ function parseUser(uid: string, email: string, d: Record<string, any>): AppUser 
     restaurantName: d.restaurantName ?? d.name ?? '',
     role: d.role ?? 'restaurant',
     supplierId: d.supplierId,
+    subscriptionStatus: d.subscriptionStatus,
+    stripeCustomerId: d.stripeCustomerId,
   }
 }
 
@@ -70,8 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     try {
       const restRef = await addDoc(collection(db, 'restaurants'), { name: restaurantName, ownerId: cred.user.uid, createdAt: serverTimestamp() })
-      await setDoc(doc(db, 'users', cred.user.uid), { email, restaurantId: restRef.id, restaurantName, role: 'restaurant', createdAt: serverTimestamp() })
-      setUser({ uid: cred.user.uid, email, restaurantId: restRef.id, restaurantName, role: 'restaurant' })
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        email, restaurantId: restRef.id, restaurantName, role: 'restaurant',
+        subscriptionStatus: 'pending_checkout', createdAt: serverTimestamp(),
+      })
+      setUser({ uid: cred.user.uid, email, restaurantId: restRef.id, restaurantName, role: 'restaurant', subscriptionStatus: 'pending_checkout' })
     } catch (err) {
       await cred.user.delete()
       throw err
@@ -82,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     try {
       const supplierRef = await addDoc(collection(db, 'suppliers'), {
-        name, phone, email, restaurantId: '', isGlobal: true, createdAt: serverTimestamp(),
+        name, phone, email, restaurantId: '', isGlobal: false, createdAt: serverTimestamp(),
       })
       await setDoc(doc(db, 'users', cred.user.uid), {
         email, role: 'supplier', supplierId: supplierRef.id, name, createdAt: serverTimestamp(),
@@ -97,7 +104,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => { await firebaseSignOut(auth); setUser(null) }
   const resetPassword = (email: string) => sendPasswordResetEmail(auth, email)
 
-  return <AuthContext.Provider value={{ user, loading, signIn, signUp, signUpSupplier, signOut, resetPassword }}>{children}</AuthContext.Provider>
+  const postBillingEndpoint = async (endpoint: string) => {
+    const idToken = await auth.currentUser?.getIdToken()
+    if (!idToken) throw Object.assign(new Error('Session expirée'), { code: 'app/session-expired' })
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({}),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok || typeof data.url !== 'string') {
+      throw Object.assign(new Error(data.error ?? 'Erreur paiement'), { code: 'app/billing-error' })
+    }
+    window.location.assign(data.url)
+  }
+
+  const startCheckout = () => postBillingEndpoint('/api/create-checkout-session')
+  const openBillingPortal = () => postBillingEndpoint('/api/create-billing-portal-session')
+
+  return <AuthContext.Provider value={{ user, loading, signIn, signUp, signUpSupplier, signOut, resetPassword, startCheckout, openBillingPortal }}>{children}</AuthContext.Provider>
 }
 
 export const useAuth = () => {

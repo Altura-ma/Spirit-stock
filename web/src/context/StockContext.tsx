@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
 import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
-import { db } from '../config/firebase'
+import { auth, db } from '../config/firebase'
 import { Bottle, Supplier, Order, OrderItem, Movement } from '../types'
 import { useAuth } from './AuthContext'
 
@@ -149,7 +149,6 @@ export function StockProvider({ children }: { children: ReactNode }) {
     if (!user) throw new Error('Non connecté')
     const supplier = suppliers.find(s => s.id === supplierId)
     const token = crypto.randomUUID()
-    const now = new Date()
     const ref = await addDoc(collection(db, 'orders'), {
       restaurantId: user.restaurantId, supplierId,
       supplierName: supplier?.name ?? '', supplierEmail: supplier?.email ?? '',
@@ -157,10 +156,17 @@ export function StockProvider({ children }: { children: ReactNode }) {
       items, token, status: 'pending', createdAt: serverTimestamp(),
     })
     if (supplier?.email) {
-      fetch('/api/send-order', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: ref.id, token, supplierEmail: supplier.email, supplierName: supplier.name, restaurantName: user.restaurantName, restaurantEmail: user.email, items: items.map(i => ({ bottleName: i.bottleName, category: i.category, quantity: i.quantity })), createdAt: now.toISOString() }),
-      }).catch(err => console.error('send-order failed:', err))
+      const idToken = await auth.currentUser?.getIdToken()
+      if (!idToken) throw new Error('Session expirée')
+
+      const sendRes = await fetch('/api/send-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ orderId: ref.id }),
+      })
+      if (!sendRes.ok) {
+        throw new Error('Commande créée, mais email fournisseur non envoyé')
+      }
     }
     return ref.id
   }

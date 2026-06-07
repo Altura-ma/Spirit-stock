@@ -1,51 +1,33 @@
-// Vercel serverless function — handles supplier accept/cancel clicks from email
+// Vercel serverless function — handles supplier accept/refuse clicks from email
 
-const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID ?? 'spirit-stock'
-const FIREBASE_API_KEY = process.env.FIREBASE_WEB_API_KEY ?? 'AIzaSyDlj8Z6J8q4X58ttJE0Qsxr4ZS5IuW32Hc'
-const RESEND_API_KEY = process.env.RESEND_API_KEY ?? 're_GgbqiBwc_52mftzNhNULbnsWAL8NkF8YB'
-const RESEND_FROM = process.env.RESEND_FROM_EMAIL ?? 'Spirit Stock <onboarding@resend.dev>'
+import { cert, getApps, initializeApp } from 'firebase-admin/app'
+import { getFirestore } from 'firebase-admin/firestore'
 
-const FS_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`
-
-// ── Firestore REST helpers ───────────────────────────────────────────────────
-
-function parseField(field) {
-  if (field.stringValue !== undefined) return field.stringValue
-  if (field.integerValue !== undefined) return Number(field.integerValue)
-  if (field.doubleValue !== undefined) return field.doubleValue
-  if (field.booleanValue !== undefined) return field.booleanValue
-  if (field.timestampValue !== undefined) return new Date(field.timestampValue)
-  if (field.nullValue !== undefined) return null
-  if (field.arrayValue) return (field.arrayValue.values ?? []).map(parseField)
-  if (field.mapValue) return parseDoc(field.mapValue)
-  return null
+const requiredEnv = (key) => {
+  const value = process.env[key]
+  if (!value) throw new Error(`${key} not set`)
+  return value
 }
 
-function parseDoc(doc) {
-  const out = {}
-  for (const [k, v] of Object.entries(doc.fields ?? {})) out[k] = parseField(v)
-  return out
+const RESEND_API_KEY = requiredEnv('RESEND_API_KEY')
+const RESEND_FROM = requiredEnv('RESEND_FROM_EMAIL')
+
+function getAdminDb() {
+  if (!getApps().length) {
+    initializeApp({ credential: cert(JSON.parse(requiredEnv('FIREBASE_SERVICE_ACCOUNT_JSON'))) })
+  }
+  return getFirestore()
 }
 
 async function getOrder(orderId) {
-  const res = await fetch(`${FS_BASE}/orders/${orderId}?key=${FIREBASE_API_KEY}`)
-  if (!res.ok) return null
-  return parseDoc(await res.json())
+  const snap = await getAdminDb().collection('orders').doc(orderId).get()
+  if (!snap.exists) return null
+  return { id: snap.id, ...snap.data() }
 }
 
-async function patchOrder(orderId, fields, fieldPaths) {
-  const mask = fieldPaths.map(f => `updateMask.fieldPaths=${f}`).join('&')
-  const body = { fields: {} }
-  for (const [k, v] of Object.entries(fields)) {
-    if (typeof v === 'string') body.fields[k] = { stringValue: v }
-    else if (v instanceof Date) body.fields[k] = { timestampValue: v.toISOString() }
-  }
-  const res = await fetch(`${FS_BASE}/orders/${orderId}?${mask}&key=${FIREBASE_API_KEY}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  return res.ok
+async function patchOrder(orderId, fields) {
+  await getAdminDb().collection('orders').doc(orderId).update(fields)
+  return true
 }
 
 // ── Email helpers ────────────────────────────────────────────────────────────
@@ -56,7 +38,7 @@ function escapeHtml(str) {
 
 function itemsList(items) {
   return (items ?? []).map(i =>
-    `<li style="margin-bottom:4px;"><strong>${escapeHtml(i.bottleName)}</strong> × ${i.quantity}</li>`
+    `<li style="margin-bottom:4px;"><strong>${escapeHtml(i.bottleName)}</strong> × ${Number(i.quantity) || 0}</li>`
   ).join('')
 }
 
@@ -82,11 +64,15 @@ function buildRefusedEmail(supplierName, items) {
 }
 
 async function sendEmail(to, subject, html) {
-  await fetch('https://api.resend.com/emails', {
+  const emailRes = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ from: RESEND_FROM, to: [to], subject, html }),
   })
+  if (!emailRes.ok) {
+    const text = await emailRes.text().catch(() => '')
+    throw new Error(`Resend failed: ${emailRes.status} ${text}`)
+  }
 }
 
 // ── Response pages ───────────────────────────────────────────────────────────
@@ -135,12 +121,10 @@ export default async function handler(req, res) {
     return html(404, page('❓', 'Commande introuvable', 'Cette commande n\'existe pas ou a été supprimée.', '#E53935'))
   }
 
-  // Verify token
   if (order.token !== token) {
     return html(403, page('🔒', 'Lien invalide', 'Ce lien est expiré ou incorrect.', '#E53935'))
   }
 
-  // Idempotency — already processed
   if (order.status !== 'pending') {
     const msg = order.status === 'accepted' ? 'déjà acceptée'
       : order.status === 'refused' ? 'déjà refusée'
@@ -151,32 +135,34 @@ export default async function handler(req, res) {
 
   const now = new Date()
 
-  if (action === 'accept') {
-    const ok = await patchOrder(orderId, { status: 'accepted', acceptedAt: now }, ['status', 'acceptedAt'])
-    if (!ok) return html(500, page('⚠️', 'Erreur', 'Impossible de mettre à jour la commande.', '#E53935'))
+  try {
+    if (action === 'accept') {
+      await patchOrder(orderId, { status: 'accepted', acceptedAt: now })
+
+      if (order.restaurantEmail) {
+        await sendEmail(
+          order.restaurantEmail,
+          `✓ Commande acceptée — ${order.supplierName ?? 'Votre fournisseur'}`,
+          buildAcceptedEmail(order.supplierName ?? 'Votre fournisseur', order.items)
+        ).catch(console.error)
+      }
+
+      return html(200, page('✅', 'Commande acceptée !', 'Le restaurant a été notifié. Merci !', '#2E7D32'))
+    }
+
+    await patchOrder(orderId, { status: 'refused', cancelledAt: now })
 
     if (order.restaurantEmail) {
       await sendEmail(
         order.restaurantEmail,
-        `✓ Commande acceptée — ${order.supplierName ?? 'Votre fournisseur'}`,
-        buildAcceptedEmail(order.supplierName ?? 'Votre fournisseur', order.items)
+        `Commande refusée — ${order.supplierName ?? 'Votre fournisseur'}`,
+        buildRefusedEmail(order.supplierName ?? 'Votre fournisseur', order.items)
       ).catch(console.error)
     }
 
-    return html(200, page('✅', 'Commande acceptée !', 'Le restaurant a été notifié. Merci !', '#2E7D32'))
+    return html(200, page('❌', 'Commande refusée', 'Le restaurant a été notifié.', '#E53935'))
+  } catch (err) {
+    console.error('order-action failed:', err)
+    return html(500, page('⚠️', 'Erreur', 'Impossible de mettre à jour la commande.', '#E53935'))
   }
-
-  // action === 'cancel' (supplier refuses)
-  const ok = await patchOrder(orderId, { status: 'refused', cancelledAt: now }, ['status', 'cancelledAt'])
-  if (!ok) return html(500, page('⚠️', 'Erreur', 'Impossible de mettre à jour la commande.', '#E53935'))
-
-  if (order.restaurantEmail) {
-    await sendEmail(
-      order.restaurantEmail,
-      `Commande refusée — ${order.supplierName ?? 'Votre fournisseur'}`,
-      buildRefusedEmail(order.supplierName ?? 'Votre fournisseur', order.items)
-    ).catch(console.error)
-  }
-
-  return html(200, page('❌', 'Commande refusée', 'Le restaurant a été notifié.', '#E53935'))
 }
