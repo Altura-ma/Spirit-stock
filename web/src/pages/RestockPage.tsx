@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { Phone, Mail, ShoppingCart, CheckCircle, Send } from 'lucide-react'
+import { Phone, Mail, ShoppingCart, CheckCircle, Send, Plus } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { useAuth } from '../context/AuthContext'
 import { CATEGORY_LABELS, OrderItem } from '../types'
 
 export default function RestockPage() {
   const { user } = useAuth()
-  const { bottles, suppliers, cart, clearSupplierCart, clearCart, createOrder, getLowStock } = useStock()
+  const { bottles, suppliers, cart, addToCart, setCartQty, clearSupplierCart, clearCart, createOrder, getLowStock } = useStock()
   const [sent, setSent] = useState<string[]>([])
   const [emailError, setEmailError] = useState<string | null>(null)
   const [loading, setLoading] = useState<string | null>(null) // supplierId being sent
@@ -21,6 +21,7 @@ export default function RestockPage() {
   }
 
   const totalCartItems = cartBottles.length
+  const totalCartUnits = cartBottles.reduce((sum, b) => sum + (cart[b.id] ?? 0), 0)
 
   const handleCommander = async (supplierId: string) => {
     const section = cartSections.find(s => s.supplier.id === supplierId)
@@ -76,7 +77,7 @@ export default function RestockPage() {
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-bold text-gray-900">Commander</h1>
           {totalCartItems > 0 && (
-            <span className="bg-primary text-white text-xs font-bold rounded-full px-2 py-0.5">{totalCartItems}</span>
+            <span className="bg-primary text-white text-xs font-bold rounded-full px-2 py-0.5">{totalCartUnits}</span>
           )}
         </div>
         {totalCartItems > 1 && (
@@ -142,7 +143,21 @@ export default function RestockPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-gray-400">stock : {b.quantity}</span>
-                      <span className="text-base font-bold text-primary">+{cart[b.id]}</span>
+                      <div className="flex items-center justify-between bg-success/10 border border-success rounded-lg px-1 min-w-[128px]">
+                        <button
+                          type="button"
+                          onClick={() => setCartQty(b.id, (cart[b.id] ?? 0) - 1)}
+                          aria-label={`Retirer ${b.name} de la commande`}
+                          className="w-8 h-8 flex items-center justify-center text-success text-lg font-bold active:opacity-60"
+                        >−</button>
+                        <span className="text-sm font-bold text-success">{cart[b.id]}</span>
+                        <button
+                          type="button"
+                          onClick={() => setCartQty(b.id, (cart[b.id] ?? 0) + 1)}
+                          aria-label={`Ajouter ${b.name} à la commande`}
+                          className="w-8 h-8 flex items-center justify-center text-success text-lg font-bold active:opacity-60"
+                        >+</button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -171,7 +186,17 @@ export default function RestockPage() {
                     <p className="text-xs text-gray-400">{CATEGORY_LABELS[b.category]} · seuil {b.minThreshold}</p>
                   </div>
                 </div>
-                <span className={`text-sm font-bold ${b.quantity === 0 ? 'text-danger' : 'text-warning'}`}>{b.quantity}</span>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm font-bold ${b.quantity === 0 ? 'text-danger' : 'text-warning'}`}>{b.quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => addToCart(b.id)}
+                    aria-label={`Ajouter ${b.name} à la commande`}
+                    className="w-9 h-9 rounded-full bg-success text-white flex items-center justify-center shadow-sm active:opacity-75"
+                  >
+                    <Plus size={18} strokeWidth={3} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
