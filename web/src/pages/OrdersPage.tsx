@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CheckCircle2, Clock, Package, XCircle, ThumbsUp } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { CATEGORY_LABELS } from '../types'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 type Filter = 'all' | 'pending' | 'received' | 'cancelled'
 
@@ -24,6 +25,7 @@ export default function OrdersPage() {
   const [filter, setFilter] = useState<Filter>('all')
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [confirmAction, setConfirmAction] = useState<{ type: 'receive' | 'cancel'; id: string } | null>(null)
 
   const filtered = orders
     .filter(o => {
@@ -38,18 +40,23 @@ export default function OrdersPage() {
       return diff !== 0 ? diff : b.createdAt.getTime() - a.createdAt.getTime()
     })
 
-  const handleReceive = async (id: string) => {
-    if (!window.confirm('Confirmer la réception ? Les quantités seront ajoutées au stock.')) return
-    setLoadingId(id)
-    await markOrderReceived(id)
-    setLoadingId(null)
-  }
+  const handleReceive = (id: string) => setConfirmAction({ type: 'receive', id })
 
-  const handleCancel = async (id: string) => {
-    if (!window.confirm("Annuler cette commande ? Elle sera conservée dans l'historique.")) return
-    setCancellingId(id)
-    await cancelOrder(id)
-    setCancellingId(null)
+  const handleCancel = (id: string) => setConfirmAction({ type: 'cancel', id })
+
+  const confirmPendingAction = async () => {
+    if (!confirmAction) return
+    const { type, id } = confirmAction
+    if (type === 'receive') {
+      setLoadingId(id)
+      await markOrderReceived(id)
+      setLoadingId(null)
+    } else {
+      setCancellingId(id)
+      await cancelOrder(id)
+      setCancellingId(null)
+    }
+    setConfirmAction(null)
   }
 
   return (
@@ -181,6 +188,17 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmAction !== null}
+        title={confirmAction?.type === 'receive' ? 'Confirmer la réception ?' : 'Annuler cette commande ?'}
+        message={confirmAction?.type === 'receive' ? 'Les quantités de cette commande seront ajoutées au stock.' : "La commande sera conservée dans l'historique."}
+        confirmLabel={confirmAction?.type === 'receive' ? 'Confirmer' : 'Annuler la commande'}
+        tone={confirmAction?.type === 'receive' ? 'success' : 'danger'}
+        loading={Boolean(confirmAction && (loadingId === confirmAction.id || cancellingId === confirmAction.id))}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={confirmPendingAction}
+      />
     </div>
   )
 }

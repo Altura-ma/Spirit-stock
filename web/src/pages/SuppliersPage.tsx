@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Phone, Pencil, Trash2, Plus, X, Mail, BadgeCheck } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { Supplier } from '../types'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 function SupplierModal({ supplier, onClose, onSave }: { supplier: Supplier | null; onClose: () => void; onSave: (n: string, p: string, e: string) => Promise<void> }) {
   const [name, setName] = useState(supplier?.name ?? '')
@@ -85,6 +86,7 @@ function SupplierCard({ s, bottleCount, onEdit, onDelete }: { s: Supplier; bottl
 export default function SuppliersPage() {
   const { suppliers, bottles, addSupplier, updateSupplier, deleteSupplier } = useStock()
   const [modal, setModal] = useState<{ open: boolean; supplier: Supplier | null }>({ open: false, supplier: null })
+  const [deleting, setDeleting] = useState<Supplier | null>(null)
 
   const globalSuppliers = suppliers.filter(s => s.isGlobal)
   const mySuppliers = suppliers.filter(s => !s.isGlobal)
@@ -94,8 +96,12 @@ export default function SuppliersPage() {
     else await addSupplier({ name, phone, email })
   }
 
-  const handleDelete = (s: Supplier) => {
-    if (window.confirm(`Supprimer "${s.name}" ?`)) deleteSupplier(s.id)
+  const handleDelete = (s: Supplier) => setDeleting(s)
+
+  const confirmDelete = async () => {
+    if (!deleting) return
+    await deleteSupplier(deleting.id)
+    setDeleting(null)
   }
 
   return (
@@ -142,6 +148,16 @@ export default function SuppliersPage() {
       </div>
 
       {modal.open && <SupplierModal supplier={modal.supplier} onClose={() => setModal({ open: false, supplier: null })} onSave={handleSave} />}
+
+      <ConfirmDialog
+        open={deleting !== null}
+        title="Supprimer ce fournisseur ?"
+        message={deleting ? `“${deleting.name}” sera supprimé de vos fournisseurs.` : ''}
+        confirmLabel="Supprimer"
+        tone="danger"
+        onCancel={() => setDeleting(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }

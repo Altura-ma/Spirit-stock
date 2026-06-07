@@ -4,6 +4,7 @@ import { db } from '../config/firebase'
 import { useAuth } from '../context/AuthContext'
 import { CheckCircle2, Clock, Package, XCircle, ThumbsUp } from 'lucide-react'
 import { CATEGORY_LABELS } from '../types'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 type OrderStatus = 'pending' | 'accepted' | 'received' | 'cancelled' | 'refused'
 
@@ -32,6 +33,7 @@ export default function SupplierOrdersPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>('all')
   const [actionId, setActionId] = useState<string | null>(null)
+  const [confirmRefuseId, setConfirmRefuseId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user?.supplierId) return
@@ -54,11 +56,15 @@ export default function SupplierOrdersPage() {
     setActionId(null)
   }
 
-  const handleRefuse = async (orderId: string) => {
-    if (!window.confirm('Refuser cette commande ?')) return
+  const handleRefuse = (orderId: string) => setConfirmRefuseId(orderId)
+
+  const confirmRefuse = async () => {
+    if (!confirmRefuseId) return
+    const orderId = confirmRefuseId
     setActionId(orderId + '_refuse')
     await updateDoc(doc(db, 'orders', orderId), { status: 'refused', cancelledAt: serverTimestamp() })
     setActionId(null)
+    setConfirmRefuseId(null)
   }
 
   const filtered = orders
@@ -175,6 +181,17 @@ export default function SupplierOrdersPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmRefuseId !== null}
+        title="Refuser cette commande ?"
+        message="Le restaurant verra que la commande a été refusée. Action conservée dans l'historique."
+        confirmLabel="Refuser"
+        tone="danger"
+        loading={confirmRefuseId !== null && actionId === confirmRefuseId + '_refuse'}
+        onCancel={() => setConfirmRefuseId(null)}
+        onConfirm={confirmRefuse}
+      />
     </div>
   )
 }

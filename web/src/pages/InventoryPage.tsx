@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Plus, Search, X, Pencil, Trash2, MinusCircle, ShoppingCart, History } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { CATEGORY_LABELS, BottleCategory, Bottle } from '../types'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 const CATS: { value: BottleCategory | 'all'; label: string }[] = [
   { value: 'all', label: 'Tout' },
@@ -47,6 +48,7 @@ export default function InventoryPage() {
   const [cat, setCat] = useState<BottleCategory | 'all'>('all')
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'empty'>('all')
   const [selling, setSelling] = useState<Bottle | null>(null)
+  const [deleting, setDeleting] = useState<Bottle | null>(null)
   const navigate = useNavigate()
 
   const filtered = bottles.filter(b => {
@@ -57,8 +59,12 @@ export default function InventoryPage() {
     return true
   })
 
-  const handleDelete = (b: Bottle) => {
-    if (window.confirm(`Supprimer "${b.name}" ?`)) deleteBottle(b.id)
+  const handleDelete = (b: Bottle) => setDeleting(b)
+
+  const confirmDelete = async () => {
+    if (!deleting) return
+    await deleteBottle(deleting.id)
+    setDeleting(null)
   }
 
   return (
@@ -183,6 +189,16 @@ export default function InventoryPage() {
         <SellModal bottle={selling} onClose={() => setSelling(null)}
           onSell={async (qty) => { await sellBottle(selling.id, qty); setSelling(null) }} />
       )}
+
+      <ConfirmDialog
+        open={deleting !== null}
+        title="Supprimer ce produit ?"
+        message={deleting ? `“${deleting.name}” sera supprimé de l'inventaire.` : ''}
+        confirmLabel="Supprimer"
+        tone="danger"
+        onCancel={() => setDeleting(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }

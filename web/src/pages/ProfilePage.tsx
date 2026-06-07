@@ -5,6 +5,7 @@ import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 
 import { auth } from '../config/firebase'
 import { useAuth } from '../context/AuthContext'
 import { useStock } from '../context/StockContext'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function ProfilePage() {
   const { user, signOut, openBillingPortal } = useAuth()
@@ -15,6 +16,7 @@ export default function ProfilePage() {
   const [next, setNext] = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
   const [loading, setLoading] = useState(false)
+  const [confirmSignOut, setConfirmSignOut] = useState(false)
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
   const handleBillingPortal = async () => {
@@ -106,13 +108,23 @@ export default function ProfilePage() {
 
       {/* Sign out */}
       <div className="card">
-        <button onClick={() => { if (window.confirm('Se déconnecter ?')) signOut() }} className="w-full flex items-center gap-3 p-4 text-danger">
+        <button onClick={() => setConfirmSignOut(true)} className="w-full flex items-center gap-3 p-4 text-danger">
           <LogOut size={18} />
           <span className="font-medium">Se déconnecter</span>
         </button>
       </div>
 
       <p className="text-center text-xs text-gray-400">Spirit Stock v1.0.0</p>
+
+      <ConfirmDialog
+        open={confirmSignOut}
+        title="Se déconnecter ?"
+        message="Tu devras te reconnecter pour accéder à ton espace Spirit Stock."
+        confirmLabel="Se déconnecter"
+        tone="danger"
+        onCancel={() => setConfirmSignOut(false)}
+        onConfirm={signOut}
+      />
     </div>
   )
 }
