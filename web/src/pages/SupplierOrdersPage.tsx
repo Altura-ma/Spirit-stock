@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { CheckCircle2, Clock, Package, XCircle, ThumbsUp } from 'lucide-react'
 import { CATEGORY_LABELS } from '../types'
 import ConfirmDialog from '../components/ConfirmDialog'
+import AppLoadingSkeleton from '../components/AppLoadingSkeleton'
 
 type OrderStatus = 'pending' | 'accepted' | 'received' | 'cancelled' | 'refused'
 
@@ -81,11 +82,7 @@ export default function SupplierOrdersPage() {
 
   const pendingCount = orders.filter(o => o.status === 'pending').length
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  if (loading) return <AppLoadingSkeleton />
 
   return (
     <div className="p-4 space-y-3">

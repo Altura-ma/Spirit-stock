@@ -4,6 +4,7 @@ import { db } from '../config/firebase'
 import { useAuth } from '../context/AuthContext'
 import { Search, Check, Package } from 'lucide-react'
 import { CATEGORY_LABELS, BottleCategory, Product } from '../types'
+import AppLoadingSkeleton from '../components/AppLoadingSkeleton'
 
 export default function SupplierCatalogPage() {
   const { user } = useAuth()
@@ -57,11 +58,7 @@ export default function SupplierCatalogPage() {
 
   const catalogCount = supplierProductMap.size
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  if (loading) return <AppLoadingSkeleton />
 
   return (
     <div className="p-4 space-y-4">

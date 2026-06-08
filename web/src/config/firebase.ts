@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
 
 const rawEnv = import.meta.env
 const firebaseEnv = {
@@ -26,6 +26,16 @@ if (!firebaseConfigReady) {
 
 const app = firebaseConfigReady ? initializeApp(firebaseEnv) : null
 
+const firestore = app ? (() => {
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    })
+  } catch {
+    return getFirestore(app)
+  }
+})() : null
+
 export const auth = app ? getAuth(app) : (null as unknown as ReturnType<typeof getAuth>)
-export const db = app ? getFirestore(app) : (null as unknown as ReturnType<typeof getFirestore>)
+export const db = firestore ?? (null as unknown as ReturnType<typeof getFirestore>)
 export default app

@@ -2,9 +2,12 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { LayoutGrid, Wine, ShoppingCart, ClipboardList, Phone } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import NotificationPermissionPrompt from './NotificationPermissionPrompt'
+import AppLoadingSkeleton from './AppLoadingSkeleton'
 
 export default function Layout() {
-  const { getCartTotal, getPendingOrders } = useStock()
+  const { loading, getCartTotal, getPendingOrders } = useStock()
+  if (loading) return <AppLoadingSkeleton />
+
   const cartCount = getCartTotal()
   const pendingCount = getPendingOrders().length
 

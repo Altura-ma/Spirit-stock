@@ -57,8 +57,8 @@ export function StockProvider({ children }: { children: ReactNode }) {
       setLoading(false); return
     }
     setLoading(true); setError(null)
-    let bLoaded = false, sLoaded = false, oLoaded = false, mLoaded = false, gsLoaded = false
-    const check = () => { if (bLoaded && sLoaded && oLoaded && mLoaded && gsLoaded) setLoading(false) }
+    let bLoaded = false, sLoaded = false, gsLoaded = false
+    const check = () => { if (bLoaded && sLoaded && gsLoaded) setLoading(false) }
 
     const merge = () => setSuppliers([...suppliersRef.current.platform, ...suppliersRef.current.restaurant])
 
@@ -81,14 +81,13 @@ export function StockProvider({ children }: { children: ReactNode }) {
       query(collection(db, 'orders'), where('restaurantId', '==', user.restaurantId)),
       snap => {
         setOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() ?? new Date(), acceptedAt: d.data().acceptedAt?.toDate(), receivedAt: d.data().receivedAt?.toDate(), cancelledAt: d.data().cancelledAt?.toDate() })) as Order[])
-        oLoaded = true; check()
       },
-      () => { oLoaded = true; check() }
+      () => {}
     )
     const umovements = onSnapshot(
       query(collection(db, 'movements'), where('restaurantId', '==', user.restaurantId)),
-      snap => { setMovements(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() ?? new Date() })) as Movement[]); mLoaded = true; check() },
-      () => { mLoaded = true; check() }
+      snap => { setMovements(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() ?? new Date() })) as Movement[]) },
+      () => {}
     )
     return () => { ubottles(); usuppliers(); uglobal(); uorders(); umovements() }
   }, [user])

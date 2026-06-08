@@ -16,9 +16,75 @@
     <title>Spirit Stock</title>
     <meta name="description" content="Gestion de stock pour restaurants et bars" />
     <meta name="theme-color" content="#8B4513" />
+    <style>
+      body { margin: 0; background: #F7F4F0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .boot-shell { min-height: 100vh; color: #3F2414; background: #F7F4F0; }
+      .boot-wrap { max-width: 28rem; min-height: 100vh; margin: 0 auto; display: flex; flex-direction: column; }
+      .boot-head { padding: 1.5rem 1.25rem 1rem; display: flex; align-items: center; justify-content: space-between; }
+      .boot-row { display: flex; align-items: center; gap: .75rem; }
+      .boot-logo, .boot-dot, .boot-block { background: rgba(255,255,255,.78); animation: boot-pulse 1.35s ease-in-out infinite; }
+      .boot-logo { width: 3rem; height: 3rem; border-radius: 1rem; box-shadow: 0 1px 4px rgba(63,36,20,.06); }
+      .boot-dot { width: 2.5rem; height: 2.5rem; border-radius: 999px; }
+      .boot-main { flex: 1; padding: 0 1.25rem 7rem; display: grid; gap: 1.25rem; }
+      .boot-card { background: white; border-radius: 1rem; padding: 1rem; box-shadow: 0 1px 6px rgba(63,36,20,.05); }
+      .boot-hero { padding: 1.25rem; }
+      .boot-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+      .boot-block { border-radius: 1rem; height: .75rem; }
+      .boot-title { height: 2rem; width: 9rem; margin-top: .5rem; }
+      .boot-small { height: .75rem; width: 6rem; }
+      .boot-line { height: .75rem; width: 100%; margin-top: .75rem; background: #F3EEE8; }
+      .boot-line.short { width: 82%; }
+      .boot-list { display: grid; gap: .75rem; }
+      .boot-item { display: flex; align-items: center; gap: .75rem; }
+      .boot-thumb { width: 3rem; height: 3rem; border-radius: .75rem; background: #F3EEE8; }
+      .boot-nav { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,.96); border-top: 1px solid #eee4db; }
+      .boot-nav-inner { max-width: 28rem; margin: 0 auto; display: grid; grid-template-columns: repeat(5,1fr); gap: .5rem; padding: .75rem 1rem; }
+      .boot-nav-item { display: grid; justify-items: center; gap: .45rem; }
+      .boot-nav-icon { width: 1.4rem; height: 1.4rem; border-radius: .45rem; background: #F3EEE8; }
+      .boot-nav-label { width: 2.5rem; height: .35rem; border-radius: 999px; background: #F3EEE8; }
+      @keyframes boot-pulse { 0%,100% { opacity: .55 } 50% { opacity: 1 } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot-shell" aria-label="Chargement de Spirit Stock">
+        <div class="boot-wrap">
+          <header class="boot-head">
+            <div class="boot-row">
+              <div class="boot-logo"></div>
+              <div>
+                <div class="boot-block boot-small"></div>
+                <div class="boot-block boot-small" style="width:5rem;margin-top:.5rem;background:rgba(255,255,255,.55)"></div>
+              </div>
+            </div>
+            <div class="boot-dot"></div>
+          </header>
+          <main class="boot-main">
+            <section class="boot-card boot-hero">
+              <div class="boot-block boot-small" style="background:rgba(139,69,19,.12)"></div>
+              <div class="boot-block boot-title"></div>
+              <div class="boot-block boot-line"></div>
+              <div class="boot-block boot-line short"></div>
+            </section>
+            <section class="boot-grid">
+              <div class="boot-card"><div class="boot-block boot-thumb"></div><div class="boot-block boot-line short"></div></div>
+              <div class="boot-card"><div class="boot-block boot-thumb"></div><div class="boot-block boot-line short"></div></div>
+            </section>
+            <section class="boot-list">
+              <div class="boot-item boot-card"><div class="boot-thumb"></div><div style="flex:1"><div class="boot-block boot-line short"></div><div class="boot-block boot-line" style="width:55%"></div></div></div>
+              <div class="boot-item boot-card"><div class="boot-thumb"></div><div style="flex:1"><div class="boot-block boot-line short"></div><div class="boot-block boot-line" style="width:55%"></div></div></div>
+            </section>
+          </main>
+          <nav class="boot-nav"><div class="boot-nav-inner">
+            <div class="boot-nav-item"><div class="boot-nav-icon"></div><div class="boot-nav-label"></div></div>
+            <div class="boot-nav-item"><div class="boot-nav-icon"></div><div class="boot-nav-label"></div></div>
+            <div class="boot-nav-item"><div class="boot-nav-icon"></div><div class="boot-nav-label"></div></div>
+            <div class="boot-nav-item"><div class="boot-nav-icon"></div><div class="boot-nav-label"></div></div>
+            <div class="boot-nav-item"><div class="boot-nav-icon"></div><div class="boot-nav-label"></div></div>
+          </div></nav>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
