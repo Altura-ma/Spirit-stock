@@ -20,6 +20,7 @@ const OrdersPage = lazy(() => import('./pages/OrdersPage'))
 const SuppliersPage = lazy(() => import('./pages/SuppliersPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const MovementsPage = lazy(() => import('./pages/MovementsPage'))
+const PosConnectionsPage = lazy(() => import('./pages/PosConnectionsPage'))
 const SupplierOrdersPage = lazy(() => import('./pages/SupplierOrdersPage'))
 const SupplierProfilePage = lazy(() => import('./pages/SupplierProfilePage'))
 const SupplierCatalogPage = lazy(() => import('./pages/SupplierCatalogPage'))
@@ -64,6 +65,7 @@ export default function App() {
               <Route path="suppliers" element={<SuppliersPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="history" element={<MovementsPage />} />
+              <Route path="pos" element={<PosConnectionsPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

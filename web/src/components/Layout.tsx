@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutGrid, Wine, ShoppingCart, ClipboardList, Phone } from 'lucide-react'
+import { LayoutGrid, Wine, ShoppingCart, ClipboardList, Phone, PlugZap } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import NotificationPermissionPrompt from './NotificationPermissionPrompt'
 import AppLoadingSkeleton from './AppLoadingSkeleton'
@@ -17,6 +17,7 @@ export default function Layout() {
     { to: '/restock', icon: ShoppingCart, label: 'Commander', badge: cartCount },
     { to: '/orders', icon: ClipboardList, label: 'Commandes', badge: pendingCount },
     { to: '/suppliers', icon: Phone, label: 'Fournisseurs' },
+    { to: '/pos', icon: PlugZap, label: 'Caisses' },
   ]
 
   return (

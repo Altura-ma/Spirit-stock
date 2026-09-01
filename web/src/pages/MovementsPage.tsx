@@ -14,6 +14,7 @@ const FILTERS: { value: Filter; label: string }[] = [
 
 const MOVEMENT_CONFIG: Record<MovementType, { label: string; color: string; bg: string; Icon: React.ElementType; sign: string }> = {
   sale:             { label: 'Vente',       color: 'text-danger',  bg: 'bg-danger-light',   Icon: TrendingDown, sign: '−' },
+  pos_sale:         { label: 'Caisse',      color: 'text-danger',  bg: 'bg-danger-light',   Icon: TrendingDown, sign: '−' },
   order_received:   { label: 'Commande',    color: 'text-success', bg: 'bg-success-light',  Icon: Package,      sign: '+' },
   adjustment_add:   { label: 'Ajustement',  color: 'text-primary', bg: 'bg-primary/10',     Icon: ArrowUp,      sign: '+' },
   adjustment_remove:{ label: 'Ajustement',  color: 'text-warning', bg: 'bg-warning-light',  Icon: ArrowDown,    sign: '−' },

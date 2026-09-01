@@ -57,8 +57,8 @@ service cloud.firestore {
 
     function validBottle(d) {
       return d.name is string && d.name.size() > 0 && d.name.size() <= 200
-        && d.quantity is int && d.quantity >= 0
-        && d.minThreshold is int && d.minThreshold >= 0
+        && d.quantity is number && d.quantity >= 0
+        && d.minThreshold is number && d.minThreshold >= 0
         && d.price is number && d.price >= 0
         && validCategory(d.category)
         && d.supplierId is string
@@ -69,10 +69,10 @@ service cloud.firestore {
       return d.bottleId is string && d.bottleId.size() > 0
         && d.bottleName is string && d.bottleName.size() > 0 && d.bottleName.size() <= 200
         && validCategory(d.category)
-        && d.type in ['sale', 'order_received', 'adjustment_add', 'adjustment_remove']
-        && d.quantity is int && d.quantity >= 0
-        && d.previousQuantity is int && d.previousQuantity >= 0
-        && d.newQuantity is int && d.newQuantity >= 0
+        && d.type in ['sale', 'pos_sale', 'order_received', 'adjustment_add', 'adjustment_remove']
+        && d.quantity is number && d.quantity >= 0
+        && d.previousQuantity is number && d.previousQuantity >= 0
+        && d.newQuantity is number && d.newQuantity >= 0
         && d.restaurantId is string && d.restaurantId.size() > 0;
     }
 

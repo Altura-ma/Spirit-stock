@@ -84,7 +84,7 @@ export interface Order {
   cancelledAt?: Date
 }
 
-export type MovementType = 'sale' | 'order_received' | 'adjustment_add' | 'adjustment_remove'
+export type MovementType = 'sale' | 'pos_sale' | 'order_received' | 'adjustment_add' | 'adjustment_remove'
 
 export interface Movement {
   id: string
@@ -98,5 +98,40 @@ export interface Movement {
   newQuantity: number
   orderId?: string
   supplierName?: string
+  posProvider?: string
+  posEventId?: string
   createdAt: Date
+}
+
+export type PosProvider =
+  | 'lightspeed' | 'sumup_tiller' | 'zelty' | 'laddition' | 'innovorder'
+  | 'square' | 'toast' | 'clover' | 'micros' | 'csv'
+
+export type PosSaleUnit = 'bottle' | 'glass' | 'half_glass' | 'tasting' | 'custom'
+
+export interface PosSalesEvent {
+  id: string
+  restaurantId: string
+  provider: PosProvider
+  externalEventId: string
+  externalProductId: string
+  externalProductName: string
+  quantitySold: number
+  normalizedUnit: PosSaleUnit
+  decrementApplied?: number
+  bottleId?: string
+  status: 'applied' | 'needs_mapping' | 'duplicate' | 'failed'
+}
+
+export interface PosProductMapping {
+  id: string
+  restaurantId: string
+  provider: PosProvider
+  externalProductId: string
+  externalProductName: string
+  bottleId: string
+  saleUnit: PosSaleUnit
+  decrementPerUnit: number
+  confidence: number
+  status: 'active' | 'needs_review' | 'ignored'
 }
