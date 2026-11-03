@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link2, PlugZap, RefreshCw } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Link2, PlugZap, RefreshCw, ArrowLeft } from 'lucide-react'
 import { auth } from '../config/firebase'
 import { useStock } from '../context/StockContext'
 import { PosProvider, PosSalesEvent, PosSaleUnit } from '../types'
@@ -113,6 +114,7 @@ export default function PosConnectionsPage() {
   return (
     <div className="p-4 space-y-4">
       <div className="pt-2">
+        <Link to="/more" className="inline-flex items-center gap-1 text-primary text-sm font-medium mb-2"><ArrowLeft size={16} /> Plus</Link>
         <p className="text-xs font-bold text-primary uppercase tracking-wide">Connecteurs</p>
         <h1 className="text-xl font-bold text-gray-900">Caisses</h1>
         <p className="text-sm text-gray-500 mt-1">Connecte les ventes caisse à Spirit Stock. API/webhooks arrivent par fournisseur, CSV/JSON sert de fallback universel.</p>

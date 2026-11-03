@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
 import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '../config/firebase'
-import { Bottle, Supplier, Order, OrderItem, Movement } from '../types'
+import { Bottle, Supplier, Order, OrderItem, Movement, ACTIVE_ORDER_STATUSES, ServiceRequest } from '../types'
 import { useAuth } from './AuthContext'
 
 type Cart = { [bottleId: string]: number }
@@ -13,7 +13,7 @@ interface StockContextType {
   movements: Movement[]
   loading: boolean
   error: string | null
-  addBottle: (data: Omit<Bottle, 'id' | 'restaurantId' | 'createdAt' | 'updatedAt'>) => Promise<void>
+  addBottle: (data: Omit<Bottle, 'id' | 'restaurantId' | 'createdAt' | 'updatedAt'>) => Promise<string>
   updateBottle: (id: string, data: Partial<Bottle>) => Promise<void>
   deleteBottle: (id: string) => Promise<void>
   sellBottle: (id: string, qty: number) => Promise<void>
@@ -31,6 +31,8 @@ interface StockContextType {
   markOrderReceived: (orderId: string) => Promise<void>
   cancelOrder: (orderId: string) => Promise<void>
   getPendingOrders: () => Order[]
+  getActiveOrderForBottle: (bottleId: string) => { order: Order; quantity: number } | null
+  requestInventoryService: (data: Omit<ServiceRequest, 'id' | 'restaurantId' | 'restaurantName' | 'status' | 'createdAt'>) => Promise<void>
   getLowStock: () => Bottle[]
   getTotalValue: () => number
 }
@@ -80,7 +82,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
     const uorders = onSnapshot(
       query(collection(db, 'orders'), where('restaurantId', '==', user.restaurantId)),
       snap => {
-        setOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() ?? new Date(), acceptedAt: d.data().acceptedAt?.toDate(), receivedAt: d.data().receivedAt?.toDate(), cancelledAt: d.data().cancelledAt?.toDate() })) as Order[])
+        setOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() ?? new Date(), acceptedAt: d.data().acceptedAt?.toDate(), shippedAt: d.data().shippedAt?.toDate(), receivedAt: d.data().receivedAt?.toDate(), cancelledAt: d.data().cancelledAt?.toDate() })) as Order[])
       },
       () => {}
     )
@@ -103,6 +105,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
     if (data.quantity > 0) {
       addMovement({ bottleId: ref.id, bottleName: data.name, category: data.category, type: 'adjustment_add', quantity: data.quantity, previousQuantity: 0, newQuantity: data.quantity }).catch(console.error)
     }
+    return ref.id
   }
 
   const updateBottle = async (id: string, data: Partial<Bottle>) => {
@@ -148,11 +151,15 @@ export function StockProvider({ children }: { children: ReactNode }) {
     if (!user) throw new Error('Non connecté')
     const supplier = suppliers.find(s => s.id === supplierId)
     const token = crypto.randomUUID()
+    const pricedItems = items.map(i => {
+      const price = bottles.find(b => b.id === i.bottleId)?.price
+      return typeof price === 'number' && price > 0 ? { ...i, unitPrice: price } : i
+    })
     const ref = await addDoc(collection(db, 'orders'), {
       restaurantId: user.restaurantId, supplierId,
       supplierName: supplier?.name ?? '', supplierEmail: supplier?.email ?? '',
       restaurantName: user.restaurantName, restaurantEmail: user.email,
-      items, token, status: 'pending', createdAt: serverTimestamp(),
+      items: pricedItems, token, status: 'pending', createdAt: serverTimestamp(),
     })
     if (supplier?.email) {
       const idToken = await auth.currentUser?.getIdToken()
@@ -185,7 +192,26 @@ export function StockProvider({ children }: { children: ReactNode }) {
   }
 
   const cancelOrder = async (orderId: string) => await updateDoc(doc(db, 'orders', orderId), { status: 'cancelled', cancelledAt: serverTimestamp() })
-  const getPendingOrders = () => orders.filter(o => o.status === 'pending' || o.status === 'accepted')
+  const getPendingOrders = () => orders.filter(o => ACTIVE_ORDER_STATUSES.includes(o.status))
+
+  // Most advanced active order containing this bottle (shipped > accepted > pending).
+  const getActiveOrderForBottle = (bottleId: string) => {
+    const rank = { shipped: 0, accepted: 1, pending: 2 } as Record<string, number>
+    const matches = getPendingOrders()
+      .filter(o => o.items.some(i => i.bottleId === bottleId))
+      .sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9))
+    if (matches.length === 0) return null
+    const quantity = matches.reduce((s, o) => s + o.items.filter(i => i.bottleId === bottleId).reduce((q, i) => q + i.quantity, 0), 0)
+    return { order: matches[0], quantity }
+  }
+
+  const requestInventoryService: StockContextType['requestInventoryService'] = async (data) => {
+    if (!user) throw new Error('Non connecté')
+    await addDoc(collection(db, 'service_requests'), {
+      ...data, restaurantId: user.restaurantId, restaurantName: user.restaurantName,
+      status: 'requested', createdAt: serverTimestamp(),
+    })
+  }
   const getLowStock = () => bottles.filter(b => b.quantity <= b.minThreshold)
   const getTotalValue = () => bottles.reduce((s, b) => s + b.quantity * b.price, 0)
 
@@ -195,7 +221,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
       addBottle, updateBottle, deleteBottle, sellBottle,
       addSupplier, updateSupplier, deleteSupplier,
       cart, addToCart, removeFromCart, setCartQty, clearSupplierCart, clearCart, getCartTotal,
-      createOrder, markOrderReceived, cancelOrder, getPendingOrders,
+      createOrder, markOrderReceived, cancelOrder, getPendingOrders, getActiveOrderForBottle, requestInventoryService,
       getLowStock, getTotalValue,
     }}>
       {children}

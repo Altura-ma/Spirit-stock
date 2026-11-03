@@ -1,11 +1,15 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutGrid, Wine, ShoppingCart, ClipboardList, Phone, PlugZap } from 'lucide-react'
+import { LayoutGrid, Wine, ShoppingCart, ClipboardList, BarChart3, Menu } from 'lucide-react'
+import { useSwipeNavigation } from '../hooks/useSwipeNavigation'
 import { useStock } from '../context/StockContext'
 import NotificationPermissionPrompt from './NotificationPermissionPrompt'
 import AppLoadingSkeleton from './AppLoadingSkeleton'
 
+const TAB_PATHS = ['/', '/inventory', '/restock', '/orders', '/stats', '/more']
+
 export default function Layout() {
   const { loading, getCartTotal, getPendingOrders } = useStock()
+  const swipe = useSwipeNavigation(TAB_PATHS, ['/'])
   if (loading) return <AppLoadingSkeleton />
 
   const cartCount = getCartTotal()
@@ -16,14 +20,14 @@ export default function Layout() {
     { to: '/inventory', icon: Wine, label: 'Inventaire' },
     { to: '/restock', icon: ShoppingCart, label: 'Commander', badge: cartCount },
     { to: '/orders', icon: ClipboardList, label: 'Commandes', badge: pendingCount },
-    { to: '/suppliers', icon: Phone, label: 'Fournisseurs' },
-    { to: '/pos', icon: PlugZap, label: 'Caisses' },
+    { to: '/stats', icon: BarChart3, label: 'Stats' },
+    { to: '/more', icon: Menu, label: 'Plus' },
   ]
 
   return (
     <div className="flex flex-col h-screen max-w-lg mx-auto bg-background">
       {/* Content */}
-      <main className="flex-1 overflow-y-auto pb-20">
+      <main className="flex-1 overflow-y-auto pb-20" onTouchStart={swipe.onTouchStart} onTouchEnd={swipe.onTouchEnd}>
         <Outlet />
       </main>
 

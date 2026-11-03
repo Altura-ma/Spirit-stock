@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Search, X, Pencil, Trash2, MinusCircle, ShoppingCart, History } from 'lucide-react'
+import { Plus, Search, X, Pencil, Trash2, MinusCircle, ShoppingCart, History, Clock, ThumbsUp, Truck } from 'lucide-react'
 import { useStock } from '../context/StockContext'
-import { CATEGORY_LABELS, BottleCategory, Bottle } from '../types'
+import { CATEGORY_LABELS, BottleCategory, Bottle, formatDay } from '../types'
 import ConfirmDialog from '../components/ConfirmDialog'
 
 const CATS: { value: BottleCategory | 'all'; label: string }[] = [
@@ -20,7 +20,7 @@ function SellModal({ bottle, onClose, onSell }: { bottle: Bottle; onClose: () =>
   const adjust = (d: number) => setQty(q => Math.max(1, Math.min(bottle.quantity, q + d)))
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div data-modal-open className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="card p-6 w-full max-w-sm">
         <h3 className="font-bold text-lg text-gray-900 mb-1">Enregistrer une vente</h3>
         <p className="text-gray-500 text-sm mb-1">{bottle.name}</p>
@@ -43,10 +43,10 @@ function SellModal({ bottle, onClose, onSell }: { bottle: Bottle; onClose: () =>
 }
 
 export default function InventoryPage() {
-  const { bottles, deleteBottle, sellBottle, error, cart, addToCart, setCartQty } = useStock()
+  const { bottles, deleteBottle, sellBottle, error, cart, addToCart, setCartQty, getActiveOrderForBottle } = useStock()
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState<BottleCategory | 'all'>('all')
-  const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'empty'>('all')
+  const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'empty' | 'ordered'>('all')
   const [selling, setSelling] = useState<Bottle | null>(null)
   const [deleting, setDeleting] = useState<Bottle | null>(null)
   const navigate = useNavigate()
@@ -56,6 +56,7 @@ export default function InventoryPage() {
     if (cat !== 'all' && b.category !== cat) return false
     if (stockFilter === 'low') return b.quantity > 0 && b.quantity <= b.minThreshold
     if (stockFilter === 'empty') return b.quantity === 0
+    if (stockFilter === 'ordered') return getActiveOrderForBottle(b.id) !== null
     return true
   })
 
@@ -92,8 +93,8 @@ export default function InventoryPage() {
 
       {/* Stock status filter */}
       <div className="flex gap-2">
-        {(['all', 'low', 'empty'] as const).map(v => {
-          const labels = { all: 'Tout', low: '⚠️ Alertes', empty: '🔴 Épuisés' }
+        {(['all', 'low', 'empty', 'ordered'] as const).map(v => {
+          const labels = { all: 'Tout', low: '⚠️ Alertes', empty: '🔴 Épuisés', ordered: '🚚 Commandés' }
           return (
             <button key={v} onClick={() => setStockFilter(v)}
               className={`flex-1 py-1.5 rounded-full text-xs font-semibold border transition-colors ${stockFilter === v ? 'bg-primary text-white border-primary' : 'bg-white text-gray-500 border-gray-200'}`}>
@@ -119,6 +120,7 @@ export default function InventoryPage() {
           const isLow = b.quantity > 0 && b.quantity <= b.minThreshold
           const isEmpty = b.quantity === 0
           const cartQty = cart[b.id] ?? 0
+          const active = getActiveOrderForBottle(b.id)
           return (
             <div key={b.id} className={`card p-4 ${isEmpty ? 'border-l-4 border-danger' : isLow ? 'border-l-4 border-warning' : ''}`}>
               {/* Top row: name + edit/delete */}
@@ -130,6 +132,17 @@ export default function InventoryPage() {
                     {isEmpty && <span className="text-[10px] font-bold text-danger bg-danger-light px-1.5 py-0.5 rounded-md">ÉPUISÉ</span>}
                     {isLow && <span className="text-[10px] font-bold text-warning bg-warning-light px-1.5 py-0.5 rounded-md">FAIBLE</span>}
                   </div>
+                  {active && (
+                    <Link to="/orders" className={`mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md ${
+                      active.order.status === 'shipped' ? 'bg-primary/10 text-primary'
+                        : active.order.status === 'accepted' ? 'bg-success-light text-success'
+                        : 'bg-warning-light text-warning'}`}>
+                      {active.order.status === 'shipped' ? <Truck size={11} /> : active.order.status === 'accepted' ? <ThumbsUp size={11} /> : <Clock size={11} />}
+                      {active.order.status === 'shipped' ? 'En livraison' : active.order.status === 'accepted' ? 'Commande acceptée' : 'Commande en cours'}
+                      {' · '}{active.quantity} u.
+                      {active.order.estimatedDeliveryDate && <> · prévue {formatDay(active.order.estimatedDeliveryDate)}</>}
+                    </Link>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button onClick={() => navigate(`/inventory/edit/${b.id}`)} className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-primary rounded-lg">
@@ -153,7 +166,7 @@ export default function InventoryPage() {
                   <p className="text-xs text-gray-400">val. {(b.quantity * b.price).toFixed(0)} €</p>
                 </div>
               </div>
-              {/* Bottom row: Vente + Achat actions */}
+              {/* Bottom row: Vente + Commander actions */}
               <div className="flex gap-2 mt-3">
                 <button
                   onClick={() => !isEmpty && setSelling(b)}
@@ -171,7 +184,7 @@ export default function InventoryPage() {
                   <button
                     onClick={() => addToCart(b.id)}
                     className="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold py-2 rounded-lg bg-white border-2 border-success text-success active:opacity-75">
-                    <ShoppingCart size={15} /> Achat
+                    <ShoppingCart size={15} /> Commander
                   </button>
                 )}
               </div>

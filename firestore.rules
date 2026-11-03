@@ -15,7 +15,8 @@ service cloud.firestore {
       // Billing fields are written only by server-side Stripe webhooks (Admin SDK bypasses rules).
       allow update: if request.auth != null
         && request.auth.uid == userId
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['restaurantName', 'name', 'updatedAt']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['restaurantName', 'name', 'updatedAt', 'homeWidgets'])
+        && (!('homeWidgets' in request.resource.data) || request.resource.data.homeWidgets is list);
       allow delete: if false;
     }
 
@@ -133,10 +134,49 @@ service cloud.firestore {
 
       // Supplier: read their orders + accept/refuse
       allow read: if isAuthenticated() && mySupplierId() == resource.data.supplierId;
+      // pending → accepted/refused, accepted → shipped, ETA editable while active.
       allow update: if isAuthenticated() && mySupplierId() == resource.data.supplierId
         && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'acceptedAt', 'cancelledAt'])
-        && request.resource.data.status in ['accepted', 'refused'];
+            .hasOnly(['status', 'acceptedAt', 'cancelledAt', 'shippedAt', 'estimatedDeliveryDate'])
+        && (
+          (resource.data.status == 'pending' && request.resource.data.status in ['pending', 'accepted', 'refused']) ||
+          (resource.data.status == 'accepted' && request.resource.data.status in ['accepted', 'shipped']) ||
+          (resource.data.status == 'shipped' && request.resource.data.status == 'shipped')
+        );
+    }
+
+    function validInvoice(d) {
+      return d.supplierId == mySupplierId()
+        && d.kind in ['internal', 'external']
+        && d.number is string && d.number.size() > 0 && d.number.size() <= 60
+        && d.clientName is string && d.clientName.size() > 0 && d.clientName.size() <= 200
+        && d.lines is list && d.lines.size() <= 100
+        && d.totalHT is number && d.totalTTC is number
+        && d.status in ['draft', 'issued', 'paid'];
+    }
+
+    match /invoices/{invoiceId} {
+      // Supplier: full management of their own invoices.
+      allow read, delete: if isAuthenticated() && mySupplierId() != null
+        && mySupplierId() == resource.data.supplierId;
+      allow create: if isAuthenticated() && mySupplierId() != null && validInvoice(request.resource.data);
+      allow update: if isAuthenticated() && mySupplierId() != null
+        && mySupplierId() == resource.data.supplierId
+        && validInvoice(request.resource.data);
+      // Restaurant: read the issued invoices addressed to them.
+      allow read: if isAuthenticated()
+        && resource.data.status in ['issued', 'paid']
+        && hasPaidRestaurantAccess(resource.data.restaurantId);
+    }
+
+    match /service_requests/{requestId} {
+      allow read: if isAuthenticated() && hasPaidRestaurantAccess(resource.data.restaurantId);
+      allow create: if isAuthenticated()
+        && hasPaidRestaurantAccess(request.resource.data.restaurantId)
+        && request.resource.data.status == 'requested'
+        && request.resource.data.address is string && request.resource.data.address.size() > 0
+        && request.resource.data.preferredDate is string;
+      allow update, delete: if false;
     }
 
     match /movements/{movementId} {
@@ -155,7 +195,12 @@ service cloud.firestore {
     match /supplier_products/{id} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && mySupplierId() == request.resource.data.supplierId;
-      allow update, delete: if isAuthenticated() && mySupplierId() == resource.data.supplierId;
+      allow update: if isAuthenticated() && mySupplierId() == resource.data.supplierId
+        && request.resource.data.supplierId == resource.data.supplierId
+        && request.resource.data.productId == resource.data.productId
+        && (!('description' in request.resource.data) || (request.resource.data.description is string && request.resource.data.description.size() <= 2000))
+        && (!('price' in request.resource.data) || (request.resource.data.price is number && request.resource.data.price >= 0));
+      allow delete: if isAuthenticated() && mySupplierId() == resource.data.supplierId;
     }
   }
 }

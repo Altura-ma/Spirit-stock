@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { TrendingDown, Package, ArrowUp, ArrowDown, History } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { TrendingDown, Package, ArrowUp, ArrowDown, History, ArrowLeft } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { Movement, MovementType, CATEGORY_LABELS } from '../types'
 
@@ -41,6 +42,7 @@ function groupByDate(list: Movement[]): [string, Movement[]][] {
 
 export default function MovementsPage() {
   const { movements } = useStock()
+  const navigate = useNavigate()
   const [filter, setFilter] = useState<Filter>('all')
 
   const filtered = movements
@@ -56,7 +58,10 @@ export default function MovementsPage() {
   return (
     <div className="p-4 space-y-3">
       <div className="flex items-center justify-between pt-2">
-        <h1 className="text-xl font-bold text-gray-900">Historique</h1>
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(-1)} className="text-primary" aria-label="Retour"><ArrowLeft size={22} /></button>
+          <h1 className="text-xl font-bold text-gray-900">Historique</h1>
+        </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
