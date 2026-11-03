@@ -3,10 +3,10 @@ import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword,
   signOut as firebaseSignOut, onAuthStateChanged, sendPasswordResetEmail,
 } from 'firebase/auth'
-import { doc, setDoc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, getDoc, updateDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db, firebaseConfigReady, missingFirebaseEnv } from '../config/firebase'
 import AppLoadingSkeleton from '../components/AppLoadingSkeleton'
-import { AppUser } from '../types'
+import { AppUser, HomeWidgetId } from '../types'
 
 interface AuthContextType {
   user: AppUser | null
@@ -18,6 +18,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<void>
   startCheckout: () => Promise<void>
   openBillingPortal: () => Promise<void>
+  saveHomeWidgets: (widgets: HomeWidgetId[]) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -32,6 +33,7 @@ function parseUser(uid: string, email: string, d: Record<string, any>): AppUser 
     supplierId: d.supplierId,
     subscriptionStatus: d.subscriptionStatus,
     stripeCustomerId: d.stripeCustomerId,
+    homeWidgets: Array.isArray(d.homeWidgets) ? d.homeWidgets : undefined,
   }
 }
 
@@ -160,7 +162,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   if (!firebaseConfigReady) return <FirebaseConfigError />
   if (loading) return <AppLoadingSkeleton />
 
-  return <AuthContext.Provider value={{ user, loading, signIn, signUp, signUpSupplier, signOut, resetPassword, startCheckout, openBillingPortal }}>{children}</AuthContext.Provider>
+  const saveHomeWidgets = async (widgets: HomeWidgetId[]) => {
+    if (!user) return
+    setUser(u => (u ? { ...u, homeWidgets: widgets } : u))
+    await updateDoc(doc(db, 'users', user.uid), { homeWidgets: widgets, updatedAt: serverTimestamp() })
+  }
+
+  return <AuthContext.Provider value={{ user, loading, signIn, signUp, signUpSupplier, signOut, resetPassword, startCheckout, openBillingPortal, saveHomeWidgets }}>{children}</AuthContext.Provider>
 }
 
 export const useAuth = () => {

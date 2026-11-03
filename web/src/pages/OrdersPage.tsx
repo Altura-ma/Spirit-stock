@@ -1,20 +1,20 @@
 import { useState } from 'react'
-import { CheckCircle2, Clock, Package, XCircle, ThumbsUp } from 'lucide-react'
+import { CheckCircle2, Clock, Package, XCircle, ThumbsUp, Truck, CalendarDays } from 'lucide-react'
 import { useStock } from '../context/StockContext'
-import { CATEGORY_LABELS } from '../types'
+import { CATEGORY_LABELS, formatDay } from '../types'
 import ConfirmDialog from '../components/ConfirmDialog'
 
 type Filter = 'all' | 'pending' | 'received' | 'cancelled'
 
 const FILTERS: { value: Filter; label: string }[] = [
   { value: 'all', label: 'Toutes' },
-  { value: 'pending', label: 'En attente' },
+  { value: 'pending', label: 'En cours' },
   { value: 'received', label: 'Reçues' },
   { value: 'cancelled', label: 'Annulées' },
 ]
 
-// Display priority: pending → accepted → received → cancelled
-const STATUS_ORDER: Record<string, number> = { pending: 0, accepted: 1, received: 2, refused: 3, cancelled: 4 }
+// Display priority: shipped → accepted → pending → received → cancelled
+const STATUS_ORDER: Record<string, number> = { shipped: 0, accepted: 1, pending: 2, received: 3, refused: 4, cancelled: 5 }
 
 function formatDate(d: Date) {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -30,7 +30,7 @@ export default function OrdersPage() {
   const filtered = orders
     .filter(o => {
       if (filter === 'all') return true
-      if (filter === 'pending') return o.status === 'pending' || o.status === 'accepted'
+      if (filter === 'pending') return o.status === 'pending' || o.status === 'accepted' || o.status === 'shipped'
       if (filter === 'cancelled') return o.status === 'cancelled' || o.status === 'refused'
       return o.status === filter
     })
@@ -83,10 +83,12 @@ export default function OrdersPage() {
           const isAccepted = o.status === 'accepted'
           const isCancelled = o.status === 'cancelled'
           const isRefused = o.status === 'refused'
-          const isActive = isPending || isAccepted
+          const isShipped = o.status === 'shipped'
+          const isActive = isPending || isAccepted || isShipped
 
           const borderClass = isPending ? 'border-warning'
             : isAccepted ? 'border-success'
+            : isShipped ? 'border-primary'
             : isRefused ? 'border-danger'
             : isCancelled ? 'border-gray-300'
             : 'border-success'
@@ -109,6 +111,11 @@ export default function OrdersPage() {
                         <ThumbsUp size={10} /> ACCEPTÉE
                       </span>
                     )}
+                    {isShipped && (
+                      <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                        <Truck size={10} /> EN LIVRAISON
+                      </span>
+                    )}
                     {o.status === 'received' && (
                       <span className="text-[10px] font-bold text-success bg-success-light px-1.5 py-0.5 rounded-md flex items-center gap-1">
                         <CheckCircle2 size={10} /> REÇUE
@@ -128,6 +135,11 @@ export default function OrdersPage() {
                   <p className="text-xs text-gray-400 mt-0.5">Commandée le {formatDate(o.createdAt)}</p>
                   {isAccepted && o.acceptedAt && (
                     <p className="text-xs text-success mt-0.5">✓ Acceptée le {formatDate(o.acceptedAt)}</p>
+                  )}
+                  {isActive && o.estimatedDeliveryDate && (
+                    <p className="text-xs text-primary font-semibold mt-0.5 flex items-center gap-1">
+                      <CalendarDays size={12} /> Livraison estimée {formatDay(o.estimatedDeliveryDate)}
+                    </p>
                   )}
                   {o.status === 'received' && o.receivedAt && (
                     <p className="text-xs text-success mt-0.5">Reçue le {formatDate(o.receivedAt)}</p>

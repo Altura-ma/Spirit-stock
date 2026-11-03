@@ -24,6 +24,13 @@ const PosConnectionsPage = lazy(() => import('./pages/PosConnectionsPage'))
 const SupplierOrdersPage = lazy(() => import('./pages/SupplierOrdersPage'))
 const SupplierProfilePage = lazy(() => import('./pages/SupplierProfilePage'))
 const SupplierCatalogPage = lazy(() => import('./pages/SupplierCatalogPage'))
+const SupplierInvoicesPage = lazy(() => import('./pages/SupplierInvoicesPage'))
+const SupplierStatsPage = lazy(() => import('./pages/SupplierStatsPage'))
+const StatsPage = lazy(() => import('./pages/StatsPage'))
+const ShopPage = lazy(() => import('./pages/ShopPage'))
+const MorePage = lazy(() => import('./pages/MorePage'))
+const InventoryServicePage = lazy(() => import('./pages/InventoryServicePage'))
+const RestaurantInvoicesPage = lazy(() => import('./pages/RestaurantInvoicesPage'))
 
 export default function App() {
   return (
@@ -45,6 +52,8 @@ export default function App() {
             }>
               <Route index element={<SupplierOrdersPage />} />
               <Route path="catalog" element={<SupplierCatalogPage />} />
+              <Route path="invoices" element={<SupplierInvoicesPage />} />
+              <Route path="stats" element={<SupplierStatsPage />} />
               <Route path="profile" element={<SupplierProfilePage />} />
             </Route>
 
@@ -66,6 +75,11 @@ export default function App() {
               <Route path="profile" element={<ProfilePage />} />
               <Route path="history" element={<MovementsPage />} />
               <Route path="pos" element={<PosConnectionsPage />} />
+              <Route path="stats" element={<StatsPage />} />
+              <Route path="shop" element={<ShopPage />} />
+              <Route path="more" element={<MorePage />} />
+              <Route path="inventory-service" element={<InventoryServicePage />} />
+              <Route path="invoices" element={<RestaurantInvoicesPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

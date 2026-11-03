@@ -1,17 +1,21 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { ClipboardList, BookOpen, User } from 'lucide-react'
+import { ClipboardList, BookOpen, User, FileText, BarChart3 } from 'lucide-react'
 import NotificationPermissionPrompt from './NotificationPermissionPrompt'
+import { useSwipeNavigation } from '../hooks/useSwipeNavigation'
 
 const tabs = [
   { to: '/supplier', label: 'Commandes', icon: ClipboardList, exact: true },
   { to: '/supplier/catalog', label: 'Catalogue', icon: BookOpen },
+  { to: '/supplier/invoices', label: 'Factures', icon: FileText },
+  { to: '/supplier/stats', label: 'Analyses', icon: BarChart3 },
   { to: '/supplier/profile', label: 'Profil', icon: User },
 ]
 
 export default function SupplierLayout() {
+  const swipe = useSwipeNavigation(tabs.map(t => t.to), ['/supplier'])
   return (
     <div className="flex flex-col h-screen max-w-lg mx-auto bg-background">
-      <main className="flex-1 overflow-y-auto pb-20">
+      <main className="flex-1 overflow-y-auto pb-20" onTouchStart={swipe.onTouchStart} onTouchEnd={swipe.onTouchEnd}>
         <Outlet />
       </main>
       <NotificationPermissionPrompt />

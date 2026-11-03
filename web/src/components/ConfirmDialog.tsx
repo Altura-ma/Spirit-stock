@@ -38,7 +38,7 @@ export default function ConfirmDialog({
   const Icon = styles.Icon
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+    <div data-modal-open className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl border border-white/70 overflow-hidden animate-in fade-in zoom-in duration-150">
         <div className="p-5">
           <div className="flex items-start gap-3">

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Phone, Pencil, Trash2, Plus, X, Mail, BadgeCheck } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Phone, Pencil, Trash2, Plus, X, Mail, BadgeCheck, ArrowLeft } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { Supplier } from '../types'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -20,7 +21,7 @@ function SupplierModal({ supplier, onClose, onSave }: { supplier: Supplier | nul
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div data-modal-open className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="card p-6 w-full max-w-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-lg text-gray-900">{supplier ? 'Modifier' : 'Nouveau fournisseur'}</h3>
@@ -107,7 +108,10 @@ export default function SuppliersPage() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between pt-2">
-        <h1 className="text-xl font-bold text-gray-900">Fournisseurs</h1>
+        <div className="flex items-center gap-3">
+          <Link to="/more" className="text-primary" aria-label="Retour"><ArrowLeft size={22} /></Link>
+          <h1 className="text-xl font-bold text-gray-900">Fournisseurs</h1>
+        </div>
         <button onClick={() => setModal({ open: true, supplier: null })} className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white">
           <Plus size={22} />
         </button>

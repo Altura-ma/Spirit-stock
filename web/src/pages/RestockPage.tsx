@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Phone, Mail, ShoppingCart, CheckCircle, Send, Plus } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Phone, Mail, ShoppingCart, CheckCircle, Send, Plus, Store, ChevronRight } from 'lucide-react'
 import { useStock } from '../context/StockContext'
 import { useAuth } from '../context/AuthContext'
 import { CATEGORY_LABELS, OrderItem } from '../types'
@@ -68,6 +69,7 @@ export default function RestockPage() {
       </div>
       <p className="font-bold text-success text-lg">Tout est en stock</p>
       <p className="text-gray-400 text-sm mt-1">Aucun produit sous le seuil minimum</p>
+      <Link to="/shop" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary"><Store size={16} /> Parcourir la boutique</Link>
     </div>
   )
 
@@ -91,6 +93,12 @@ export default function RestockPage() {
           </button>
         )}
       </div>
+
+      <Link to="/shop" className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-xl">
+        <Store size={18} className="text-primary flex-shrink-0" />
+        <p className="text-gray-700 text-sm font-medium flex-1">Boutique : toutes les références fournisseurs</p>
+        <ChevronRight size={16} className="text-gray-400" />
+      </Link>
 
       {emailError && (
         <div className="bg-danger-light text-danger text-sm p-3 rounded-xl flex items-start gap-2">
